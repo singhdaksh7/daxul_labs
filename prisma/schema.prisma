@@ -1,0 +1,323 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum DiscountType {
+  percentage
+  fixed
+}
+
+enum ManufacturingStatus {
+  new
+  design_pending
+  design_approved
+  printing
+  finishing
+  qc
+  packed
+  shipped
+  delivered
+  cancelled
+}
+
+enum PaymentMethod {
+  prepaid
+  cod
+}
+
+enum PaymentStatus {
+  paid
+  pending
+  failed
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  role          Role      @default(CUSTOMER)
+  accounts      Account[]
+  sessions      Session[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Product {
+  id                    String        @id @default(cuid())
+  name                  String
+  slug                  String        @unique
+  category              String
+  price                 Float
+  compareAtPrice        Float?
+  description           String        @db.Text
+  story                 String?       @db.Text
+  specs                 Json?         // Array of { label, value }
+  careInstructions      String[]
+  faq                   Json?         // Array of { question, answer }
+  images                String[]
+  videoUrl              String?
+  badge                 String?
+  stock                 Int           @default(10)
+  productionTimeDays   Int           @default(2)
+  estimatedDispatchDays Int           @default(3)
+  prepaidOnly           Boolean       @default(false)
+  codEnabled            Boolean       @default(true)
+  finishes              String[]
+  colors                String[]
+  sizes                 String[]
+  businessCosts         Json?         // { filamentGrams, printHours, filamentCostPerGram, hardwareCost, packagingCost, otherMaterialCost }
+  isArchived            Boolean       @default(false)
+  isFeatured            Boolean       @default(false)
+  customFields          CustomField[]
+  orderItems            OrderItem[]
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+}
+
+model CustomField {
+  id          String   @id @default(cuid())
+  productId   String
+  label       String
+  type        String   // text, textarea, photo, date, color, select
+  required    Boolean  @default(false)
+  options     String[]
+  fee         Float    @default(0)
+  placeholder String?
+  helpText    String?
+  order       Int      @default(0)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String   @db.Text
+  image       String
+  badge       String?
+  featured    Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id                 String              @id @default(cuid())
+  orderNumber        String              @unique
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  customerName       String
+  customerEmail      String
+  customerPhone      String
+  street             String
+  city               String
+  state              String
+  pincode            String
+  country            String              @default("India")
+  totalAmount        Float
+  discountAmount     Float               @default(0)
+  shippingFee        Float               @default(0)
+  codFee             Float               @default(0)
+  paymentMethod      PaymentMethod       @default(prepaid)
+  paymentStatus      PaymentStatus       @default(pending)
+  razorpayOrderId    String?             @unique
+  razorpayPaymentId  String?             @unique
+  razorpaySignature  String?
+  status             ManufacturingStatus @default(new)
+  qcNotes            String?             @db.Text
+  trackingNumber     String?
+  courierName        String?
+  proofImageUrl      String?
+  items              OrderItem[]
+  statusHistory      OrderStatusHistory[]
+}
+
+model OrderItem {
+  id              String   @id @default(cuid())
+  orderId         String
+  productId       String
+  productName     String
+  productImage    String
+  unitPrice       Float
+  quantity        Int
+  selectedFinish  String?
+  selectedColor   String?
+  selectedSize    String?
+  customizations  Json?    // Key-value pairs of customer inputs
+  customizationFee Float   @default(0)
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product         Product  @relation(fields: [productId], references: [id])
+}
+
+model OrderStatusHistory {
+  id        String              @id @default(cuid())
+  orderId   String
+  status    ManufacturingStatus
+  timestamp DateTime            @default(now())
+  note      String?
+  order     Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model HomepageSection {
+  id               String   @id @default(cuid())
+  type             String   // hero, flagship, collections, customize, lab_spotlight, etc.
+  title            String
+  subtitle         String
+  badgeText        String
+  content          String   @db.Text
+  ctaText          String
+  ctaUrl           String
+  secondaryCtaText String?
+  secondaryCtaUrl  String?
+  mediaUrl         String
+  secondaryMediaUrl String?
+  isVisible        Boolean  @default(true)
+  order            Int      @default(0)
+}
+
+model ThemeSettings {
+  id                    String @id @default("default")
+  backgroundColor       String @default("#0B0B0C")
+  cardBackgroundColor   String @default("#151515")
+  accentColor           String @default("#C8FF35")
+  textColor             String @default("#FFFFFF")
+  secondaryTextColor    String @default("#B9B9B4")
+  buttonColor           String @default("#C8FF35")
+  buttonTextColor       String @default("#0B0B0C")
+  fontFamily            String @default("var(--font-geist-sans), sans-serif")
+  headingSizeMultiplier Float  @default(1.0)
+  borderRadius          String @default("md")
+  cardStyle             String @default("glass")
+}
+
+model SiteSettings {
+  id                       String  @id @default("default")
+  announcementBarText      String  @default("ON-DEMAND PRODUCTION • FREE SHIPPING ON ORDERS OVER ₹1999")
+  announcementBarEnabled   Boolean @default(true)
+  brandName                String  @default("DAXUL LABS")
+  brandTagline             String  @default("Objects Made Differently.")
+  brandDescription         String  @db.Text
+  contactEmail             String  @default("studio@daxullabs.com")
+  contactPhone             String  @default("+91 98765 43210")
+  whatsAppNumber           String  @default("+919876543210")
+  instagramUrl             String  @default("https://instagram.com/daxullabs")
+  footerText               String  @default("© 2026 DAXUL LABS. CRAFTED ON-DEMAND IN INDIA.")
+  standardShippingFee      Float   @default(99)
+  expressShippingFee       Float   @default(199)
+  freeShippingThreshold    Float   @default(1999)
+  codFee                   Float   @default(50)
+  globalCodEnabled         Boolean @default(true)
+  currencySymbol           String  @default("₹")
+  currencyCode             String  @default("INR")
+  seoTitle                 String  @default("DAXUL LABS | Designed 3D Printed Objects & Projection Lamps")
+  seoDescription           String  @db.Text
+  shippingPolicyText       String  @db.Text
+  returnPolicyText         String  @db.Text
+  privacyPolicyText        String  @db.Text
+  termsConditionsText      String  @db.Text
+  cancellationPolicyText   String  @db.Text
+  customizationStep1Title  String  @default("1. Upload & Input")
+  customizationStep1Desc   String  @default("Upload a portrait photo, logo, or enter custom names and dates.")
+  customizationStep2Title  String  @default("2. 3D Design Proof")
+  customizationStep2Desc   String  @default("Our studio generates a 3D light-refracting model proof.")
+  customizationStep3Title  String  @default("3. Precision Printing")
+  customizationStep3Desc   String  @default("Crafted layer-by-layer using high-density organic biopolymers.")
+  customizationStep4Title  String  @default("4. Finishing & Delivery")
+  customizationStep4Desc   String  @default("Hand-finished, LED electronics tested, and dispatched to your door.")
+}
+
+model Coupon {
+  id            String       @id @default(cuid())
+  code          String       @unique
+  discountType  DiscountType @default(percentage)
+  discountValue Float
+  minOrderValue Float        @default(0)
+  startDate     DateTime?
+  expiryDate    DateTime?
+  usageLimit    Int?
+  usedCount     Int          @default(0)
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model UploadedFile {
+  id           String   @id @default(cuid())
+  filename     String   @unique
+  originalName String
+  mimeType     String
+  size         Int
+  provider     String   // local, s3, minio
+  path         String
+  url          String
+  userId       String?
+  orderId      String?
+  createdAt    DateTime @default(now())
+}
+
+model ProcessedWebhook {
+  id        String   @id
+  event     String
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  adminUserId    String?
+  adminUserEmail String
+  action         String
+  entityType     String
+  entityId       String?
+  details        Json?
+  timestamp      DateTime @default(now())
+}

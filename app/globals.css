@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --daxul-black: #0B0B0C;
+  --daxul-dark: #151515;
+  --daxul-graphite: #242426;
+  --daxul-bone: #F3F0E9;
+  --daxul-gray: #B9B9B4;
+  --daxul-lime: #C8FF35;
+}
+
+@theme {
+  --color-daxul-black: var(--daxul-black);
+  --color-daxul-dark: var(--daxul-dark);
+  --color-daxul-graphite: var(--daxul-graphite);
+  --color-daxul-bone: var(--daxul-bone);
+  --color-daxul-gray: var(--daxul-gray);
+  --color-daxul-lime: var(--daxul-lime);
+  --font-geist: var(--font-geist-sans), sans-serif;
+}
+
+body {
+  background-color: var(--daxul-black);
+  color: #FFFFFF;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom scrollbar for horizontal card scroll */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Subtle glow effects */
+.lime-glow {
+  box-shadow: 0 0 25px rgba(200, 255, 55, 0.25);
+}
+
+.hero-glow {
+  background: radial-gradient(circle at 75% 50%, rgba(200, 255, 55, 0.08) 0%, rgba(11, 11, 12, 0) 65%);
+}
+
+.beam-glow {
+  background: radial-gradient(ellipse at center, rgba(255, 230, 180, 0.15) 0%, rgba(11, 11, 12, 0) 70%);
+}
