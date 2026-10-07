@@ -28,10 +28,10 @@ export default function NewsletterSection({ section }: NewsletterSectionProps) {
   };
 
   return (
-    <section className="bg-[#151515] text-white py-20 lg:py-28 border-b border-[#242426]">
+    <section className="bg-daxul-dark text-white py-20 lg:py-28 border-b border-daxul-graphite">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
         
-        <span className="text-xs font-mono uppercase tracking-[0.3em] text-[#C8FF35]">
+        <span className="text-xs font-mono uppercase tracking-[0.3em] text-daxul-lime">
           {subtitle}
         </span>
 
@@ -44,7 +44,7 @@ export default function NewsletterSection({ section }: NewsletterSectionProps) {
         </p>
 
         {submitted ? (
-          <div className="inline-flex items-center gap-2 bg-[#C8FF35]/10 border border-[#C8FF35] text-[#C8FF35] px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider">
+          <div className="inline-flex items-center gap-2 bg-daxul-lime/10 border border-daxul-lime text-daxul-lime px-6 py-3 rounded-full text-xs font-bold uppercase tracking-wider">
             <Check className="w-4 h-4" />
             <span>Welcome to the DAXUL LABS Dispatch list!</span>
           </div>
@@ -58,12 +58,12 @@ export default function NewsletterSection({ section }: NewsletterSectionProps) {
                 placeholder="ENTER YOUR EMAIL..."
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[#0B0B0C] border border-[#242426] focus:border-[#C8FF35] rounded-full pl-11 pr-4 py-3 text-xs text-white uppercase placeholder:text-gray-600 focus:outline-none"
+                className="w-full bg-daxul-black border border-daxul-graphite focus:border-daxul-lime rounded-full pl-11 pr-4 py-3 text-xs text-white uppercase placeholder:text-gray-600 focus:outline-none"
               />
             </div>
             <button
               type="submit"
-              className="bg-[#C8FF35] text-[#0B0B0C] hover:bg-white px-6 py-3 rounded-full text-xs font-extrabold uppercase tracking-wider transition-colors shrink-0 flex items-center gap-1.5"
+              className="bg-daxul-lime text-daxul-black hover:bg-white px-6 py-3 rounded-full text-xs font-extrabold uppercase tracking-wider transition-colors shrink-0 flex items-center gap-1.5"
             >
               <span>{ctaText}</span>
               <ArrowRight className="w-3.5 h-3.5" />
