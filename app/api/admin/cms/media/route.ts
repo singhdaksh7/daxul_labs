@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
-import { getStorageService } from '@/lib/storage';
+import { getStorageService, UploadValidationError } from '@/lib/storage';
 import { guardAdmin, parseBody, logAdminAction, serverError } from '@/lib/adminApi';
 import { findMediaUsages } from '@/lib/mediaUsage';
 
@@ -73,23 +73,29 @@ export async function POST(req: Request) {
         maxSizeBytes: MAX_BYTES,
       });
     } catch (err: any) {
-      // Validation messages from the storage layer are safe, user-facing text.
-      if (/Invalid file type|prohibited|exceeds|signature|SECURITY/.test(err?.message || '')) {
-        return NextResponse.json({ error: err.message }, { status: 400 });
+      // Typed validation errors carry safe, user-facing text; validation runs before any write.
+      if (err instanceof UploadValidationError) {
+        return NextResponse.json({ error: err.message }, { status: err.status });
       }
       throw err;
     }
 
-    const asset = await prisma.mediaAsset.create({
-      data: {
-        type: uploadRes.mimeType.startsWith('video/') ? 'video' : 'image',
-        storageKey: uploadRes.filename,
-        filename: uploadRes.filename,
-        mimeType: uploadRes.mimeType,
-        size: uploadRes.size,
-        altText: altText || uploadRes.originalName.slice(0, 300),
-      },
-    });
+    let asset;
+    try {
+      asset = await prisma.mediaAsset.create({
+        data: {
+          type: uploadRes.mimeType.startsWith('video/') ? 'video' : 'image',
+          storageKey: uploadRes.filename,
+          filename: uploadRes.filename,
+          mimeType: uploadRes.mimeType,
+          size: uploadRes.size,
+          altText: altText || uploadRes.originalName.slice(0, 300),
+        },
+      });
+    } catch (dbErr) {
+      await getStorageService().deleteFile(uploadRes.filename).catch(() => undefined);
+      throw dbErr;
+    }
 
     await logAdminAction(g.admin, 'MEDIA_UPLOADED', 'MediaAsset', asset.id, {
       filename: asset.filename,
@@ -144,8 +150,27 @@ export async function DELETE(req: Request) {
       );
     }
 
+    // Order: delete the stored object first (idempotent: a missing object counts as success). Only then
+    // is the DB row removed; on storage failure the row is kept so the delete can be retried.
+    try {
+      await getStorageService().deleteFile(asset.storageKey);
+    } catch (storageErr) {
+      console.error('DELETE /api/admin/cms/media: storage delete failed', asset.id, storageErr);
+      await logAdminAction(g.admin, 'MEDIA_DELETE_FAILED', 'MediaAsset', assetId, {
+        assetId,
+        storageKey: asset.storageKey,
+        filename: asset.filename,
+      });
+      return NextResponse.json({ error: 'Could not delete the stored file. The asset was kept; please retry.' }, { status: 502 });
+    }
+
     await prisma.mediaAsset.delete({ where: { id: assetId } });
-    await logAdminAction(g.admin, 'MEDIA_DELETED', 'MediaAsset', assetId, { filename: asset.filename, mimeType: asset.mimeType });
+    await logAdminAction(g.admin, 'MEDIA_DELETED', 'MediaAsset', assetId, {
+      assetId,
+      storageKey: asset.storageKey,
+      filename: asset.filename,
+      mimeType: asset.mimeType,
+    });
     return NextResponse.json({ success: true });
   } catch (err) {
     return serverError(err, 'DELETE /api/admin/cms/media');

@@ -8,11 +8,73 @@ type Guard =
   | { ok: true; session: Session; admin: { id: string | null; email: string } }
   | { ok: false; response: NextResponse };
 
+function hostOf(value: string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    return new URL(value.includes('://') ? value : `http://${value}`).host.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Same-origin check (CSRF defence in depth on top of SameSite=Lax + JSON bodies).
+ * Rejects when an Origin header is present and its host is not the request host (Host / X-Forwarded-Host)
+ * or the NEXTAUTH_URL host. A missing Origin is allowed (non-browser clients, same-origin GETs); the
+ * session cookie is the credential. Origin "null" (sandboxed iframes, redirects) is rejected.
+ */
+export function isSameOriginRequest(input: {
+  origin?: string | null;
+  host?: string | null;
+  forwardedHost?: string | null;
+  nextauthUrl?: string | null;
+}): boolean {
+  const origin = input.origin;
+  if (origin === undefined || origin === null || origin === '') return true;
+  const originHost = hostOf(origin);
+  if (!originHost) return false;
+  const allowed = [input.host, input.forwardedHost?.split(',')[0], input.nextauthUrl]
+    .map((v) => hostOf(v?.trim()))
+    .filter((v): v is string => !!v);
+  return allowed.includes(originHost);
+}
+
+async function sameOriginOk(req?: Request): Promise<boolean> {
+  try {
+    if (req) {
+      if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return true;
+      return isSameOriginRequest({
+        origin: req.headers.get('origin'),
+        host: req.headers.get('host'),
+        forwardedHost: req.headers.get('x-forwarded-host'),
+        nextauthUrl: process.env.NEXTAUTH_URL,
+      });
+    }
+    // No request passed (legacy call sites): use the ambient request headers. Browsers always send
+    // Origin on cross-origin and non-GET requests, so checking whenever it is present is sufficient.
+    const { headers } = await import('next/headers');
+    const h = await headers();
+    return isSameOriginRequest({
+      origin: h.get('origin'),
+      host: h.get('host'),
+      forwardedHost: h.get('x-forwarded-host'),
+      nextauthUrl: process.env.NEXTAUTH_URL,
+    });
+  } catch {
+    return true; // outside a request scope (e.g. unit tests); nothing to compare
+  }
+}
+
 /**
  * Server-side ADMIN / SUPER_ADMIN guard for every /api/admin/* handler.
- * Usage: const g = await guardAdmin(); if (!g.ok) return g.response;
+ * Usage: const g = await guardAdmin(req?); if (!g.ok) return g.response;
+ * Re-reads the user's role from PostgreSQL on every call (see requireAdminSession) and rejects
+ * cross-origin browser requests (403).
  */
-export async function guardAdmin(): Promise<Guard> {
+export async function guardAdmin(req?: Request): Promise<Guard> {
+  if (!(await sameOriginOk(req))) {
+    return { ok: false, response: NextResponse.json({ error: 'Cross-origin request rejected' }, { status: 403 }) };
+  }
   const { authorized, reason, session } = await requireAdminSession();
   if (!authorized || !session) {
     const status = reason === 'Unauthenticated' ? 401 : 403;

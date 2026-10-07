@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { getStorageService } from '@/lib/storage';
+import { getStorageService, UploadValidationError } from '@/lib/storage';
+import { clientIpFromHeaders } from '@/lib/loginLimiter';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +31,7 @@ function rateLimited(ip: string): boolean {
 }
 
 export async function POST(req: NextRequest) {
-  const ip = (req.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
+  const ip = clientIpFromHeaders(req.headers);
   if (rateLimited(ip)) {
     return NextResponse.json({ error: 'Too many uploads. Please try again later.' }, { status: 429 });
   }
@@ -65,24 +66,31 @@ export async function POST(req: NextRequest) {
         maxSizeBytes: CUSTOMER_MAX_BYTES,
       });
     } catch (err: any) {
-      if (/Invalid file type|prohibited|exceeds|signature|SECURITY/.test(err?.message || '')) {
-        return NextResponse.json({ error: err.message }, { status: 400 });
+      // Validation happens before anything is stored: no object, no DB row on failure.
+      if (err instanceof UploadValidationError) {
+        return NextResponse.json({ error: err.message }, { status: err.status });
       }
       throw err;
     }
 
-    await prisma.uploadedFile.create({
-      data: {
-        filename: result.filename,
-        originalName: result.originalName.slice(0, 200),
-        mimeType: result.mimeType,
-        size: result.size,
-        provider: result.provider,
-        path: result.filename,
-        url: result.url,
-        userId,
-      },
-    });
+    try {
+      await prisma.uploadedFile.create({
+        data: {
+          filename: result.filename,
+          originalName: result.originalName.slice(0, 200),
+          mimeType: result.mimeType,
+          size: result.size,
+          provider: result.provider,
+          path: result.filename,
+          url: result.url,
+          userId,
+        },
+      });
+    } catch (dbErr) {
+      // Do not leave an orphaned object behind.
+      await getStorageService().deleteFile(result.filename).catch(() => undefined);
+      throw dbErr;
+    }
 
     return NextResponse.json({
       success: true,

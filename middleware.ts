@@ -2,6 +2,13 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
+/**
+ * Edge-style JWT gate only: it cannot query PostgreSQL, so it trusts the role claim in the token
+ * (up to 24h stale). The authoritative check is DB-backed and runs in every /api/admin handler
+ * (guardAdmin -> requireAdminSession) and in app/admin/(studio)/layout.tsx, which re-read the user's
+ * role on each request. Do not rely on this middleware alone.
+ * Note: the matcher covers /admin pages only; /api/admin/** is protected by the handlers' guardAdmin.
+ */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 

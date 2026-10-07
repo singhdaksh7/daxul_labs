@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 export interface UploadResult {
   filename: string;
@@ -22,6 +22,50 @@ export interface StorageOptions {
   maxSizeBytes?: number;
 }
 
+export type UploadValidationCode =
+  | 'FORBIDDEN_EXTENSION'
+  | 'INVALID_TYPE'
+  | 'TOO_LARGE'
+  | 'EMPTY_FILE'
+  | 'BAD_SIGNATURE'
+  | 'UNSAFE_CONTENT';
+
+/**
+ * Thrown by the storage layer for any user-caused validation failure (never for infrastructure
+ * failures). Routes map it to HTTP 400 (413 for TOO_LARGE). Messages are safe to show to users.
+ */
+export class UploadValidationError extends Error {
+  readonly code: UploadValidationCode;
+  constructor(code: UploadValidationCode, message: string) {
+    super(message);
+    this.name = 'UploadValidationError';
+    this.code = code;
+  }
+  get status(): number {
+    return this.code === 'TOO_LARGE' ? 413 : 400;
+  }
+}
+
+/** Thrown when a storage key is not a plain generated filename (traversal attempt etc). */
+export class InvalidStorageKeyError extends Error {
+  constructor(key: string) {
+    super(`Invalid storage key: ${JSON.stringify(String(key).slice(0, 80))}`);
+    this.name = 'InvalidStorageKeyError';
+  }
+}
+
+const EXT_BY_MIME: Record<string, string> = {
+  'image/jpeg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/avif': '.avif',
+  'image/gif': '.gif',
+  'image/svg+xml': '.svg',
+  'video/mp4': '.mp4',
+  'video/webm': '.webm',
+  'application/pdf': '.pdf',
+};
+
 const DEFAULT_ALLOWED_MIME_TYPES = [
   'image/jpeg',
   'image/png',
@@ -41,6 +85,19 @@ const FORBIDDEN_EXTENSIONS = [
 
 const DEFAULT_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB (Supports short videos)
 
+const BAD_KEY_CHARS = /[\\/\0]/;
+
+function isPlainKey(key: unknown): key is string {
+  return (
+    typeof key === 'string' &&
+    key.length > 0 &&
+    key !== '.' &&
+    key !== '..' &&
+    key === path.basename(key) &&
+    !BAD_KEY_CHARS.test(key)
+  );
+}
+
 export abstract class StorageService {
   abstract uploadFile(
     buffer: Buffer,
@@ -55,7 +112,14 @@ export abstract class StorageService {
    */
   abstract getFile(filename: string): Promise<StoredFile | null>;
 
-  protected validateFile(
+  /**
+   * Deletes a stored object by key. Idempotent: a missing object is success.
+   * Throws InvalidStorageKeyError for anything that is not a plain filename.
+   */
+  abstract deleteFile(key: string): Promise<void>;
+
+  /** Pure validation; throws UploadValidationError. Runs before anything is stored. */
+  validateFile(
     buffer: Buffer,
     originalName: string,
     mimeType: string,
@@ -64,29 +128,41 @@ export abstract class StorageService {
     const allowed = options?.allowedMimeTypes || DEFAULT_ALLOWED_MIME_TYPES;
     const maxSize = options?.maxSizeBytes || DEFAULT_MAX_SIZE_BYTES;
 
-    // 1. Extension Blacklist Check
-    const ext = path.extname(originalName).toLowerCase();
-    if (FORBIDDEN_EXTENSIONS.includes(ext)) {
-      throw new Error(`Executable or script files with extension ${ext} are strictly prohibited.`);
+    if (buffer.length === 0) {
+      throw new UploadValidationError('EMPTY_FILE', 'The uploaded file is empty.');
+    }
+
+    // 1. Extension denylist. Every dot-separated segment is checked so "shell.php.png" is refused too.
+    const segments = path.basename(originalName || '').toLowerCase().split('.').slice(1);
+    const bad = segments.find((seg) => FORBIDDEN_EXTENSIONS.includes(`.${seg}`));
+    if (bad) {
+      throw new UploadValidationError(
+        'FORBIDDEN_EXTENSION',
+        `Executable or script files with extension .${bad} are strictly prohibited.`
+      );
     }
 
     // 2. MIME Type Whitelist Check
     if (!allowed.includes(mimeType)) {
-      throw new Error(`Invalid file type: ${mimeType}. Allowed types: ${allowed.join(', ')}`);
+      throw new UploadValidationError(
+        'INVALID_TYPE',
+        `Invalid file type: ${String(mimeType).slice(0, 60)}. Allowed types: ${allowed.join(', ')}`
+      );
     }
 
     // 3. File Size Check
     if (buffer.length > maxSize) {
-      throw new Error(
+      throw new UploadValidationError(
+        'TOO_LARGE',
         `File size (${(buffer.length / (1024 * 1024)).toFixed(2)}MB) exceeds maximum limit of ${(maxSize / (1024 * 1024)).toFixed(0)}MB.`
       );
     }
 
-    // 4. Magic Bytes Server-side Validation
+    // 4. Magic bytes (always; truncated files fail)
     this.validateMagicBytes(buffer, mimeType);
 
-    // 5. SVG XSS Payload Inspection
-    if (mimeType === 'image/svg+xml' || ext === '.svg') {
+    // 5. SVG XSS payload inspection
+    if (mimeType === 'image/svg+xml') {
       const content = buffer.toString('utf8').toLowerCase();
       if (
         content.includes('<script') ||
@@ -95,43 +171,65 @@ export abstract class StorageService {
         content.includes('onerror=') ||
         content.includes('onclick=')
       ) {
-        throw new Error('SECURITY VIOLATION: SVG contains embedded scripts or inline handlers.');
+        throw new UploadValidationError('UNSAFE_CONTENT', 'SECURITY VIOLATION: SVG contains embedded scripts or inline handlers.');
       }
     }
   }
 
   private validateMagicBytes(buffer: Buffer, mimeType: string): void {
-    if (buffer.length < 4) return;
+    const fail = (name: string): never => {
+      throw new UploadValidationError('BAD_SIGNATURE', `File content does not match a valid ${name} signature.`);
+    };
+    const startsWith = (bytes: number[]) =>
+      buffer.length >= bytes.length && bytes.every((b, i) => buffer[i] === b);
 
-    if (mimeType === 'image/jpeg') {
-      if (buffer[0] !== 0xff || buffer[1] !== 0xd8 || buffer[2] !== 0xff) {
-        throw new Error('File content header does not match valid JPEG image signature.');
-      }
-    } else if (mimeType === 'image/png') {
-      if (
-        buffer[0] !== 0x89 ||
-        buffer[1] !== 0x50 ||
-        buffer[2] !== 0x4e ||
-        buffer[3] !== 0x47
-      ) {
-        throw new Error('File content header does not match valid PNG image signature.');
-      }
-    } else if (mimeType === 'image/webp') {
-      const header = buffer.toString('ascii', 0, 12);
-      if (!header.startsWith('RIFF') || !header.endsWith('WEBP')) {
-        throw new Error('File content header does not match valid WEBP image signature.');
-      }
-    } else if (mimeType === 'application/pdf') {
-      const header = buffer.toString('ascii', 0, 4);
-      if (!header.startsWith('%PDF')) {
-        throw new Error('File content header does not match valid PDF document signature.');
-      }
+    switch (mimeType) {
+      case 'image/jpeg':
+        if (!startsWith([0xff, 0xd8, 0xff]) || buffer.length < 12) fail('JPEG');
+        break;
+      case 'image/png':
+        // Full 8-byte signature, then an IHDR chunk must follow (min 33 bytes).
+        if (
+          !startsWith([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) ||
+          buffer.length < 33 ||
+          buffer.toString('ascii', 12, 16) !== 'IHDR'
+        ) {
+          fail('PNG');
+        }
+        break;
+      case 'image/webp':
+        if (
+          buffer.length < 20 ||
+          buffer.toString('ascii', 0, 4) !== 'RIFF' ||
+          buffer.toString('ascii', 8, 12) !== 'WEBP' ||
+          !/^VP8[ LX]$/.test(buffer.toString('ascii', 12, 16))
+        ) {
+          fail('WEBP');
+        }
+        break;
+      case 'application/pdf':
+        if (buffer.length < 12 || buffer.toString('ascii', 0, 5) !== '%PDF-') fail('PDF');
+        break;
+      case 'image/gif':
+        if (buffer.length < 10 || !['GIF87a', 'GIF89a'].includes(buffer.toString('ascii', 0, 6))) fail('GIF');
+        break;
+      case 'image/avif':
+      case 'video/mp4':
+        if (buffer.length < 12 || buffer.toString('ascii', 4, 8) !== 'ftyp') {
+          fail(mimeType === 'image/avif' ? 'AVIF' : 'MP4');
+        }
+        break;
+      case 'video/webm':
+        if (!startsWith([0x1a, 0x45, 0xdf, 0xa3]) || buffer.length < 12) fail('WEBM');
+        break;
+      default:
+        break; // SVG handled by the content scan
     }
   }
 
-  protected generateRandomFilename(originalName: string): string {
-    const ext = path.extname(originalName).toLowerCase() || '.bin';
-    const safeExt = ext.replace(/[^a-zA-Z0-9._-]/g, '');
+  /** Extension comes from the validated MIME type, never from the user-supplied name. */
+  protected generateRandomFilename(mimeType: string): string {
+    const safeExt = EXT_BY_MIME[mimeType] || '.bin';
     const randomHex = crypto.randomBytes(16).toString('hex');
     return `${randomHex}${safeExt}`;
   }
@@ -163,10 +261,16 @@ export class LocalStorageService extends StorageService {
   ): Promise<UploadResult> {
     this.validateFile(buffer, originalName, mimeType, options);
 
-    const filename = this.generateRandomFilename(originalName);
+    const filename = this.generateRandomFilename(mimeType);
     const filePath = path.join(this.storageDir, filename);
 
-    await fs.promises.writeFile(filePath, buffer);
+    try {
+      await fs.promises.writeFile(filePath, buffer, { flag: 'wx' });
+    } catch (err) {
+      // Never leave a partial file behind (but never delete a pre-existing file on a name clash).
+      if ((err as any)?.code !== 'EEXIST') await fs.promises.unlink(filePath).catch(() => undefined);
+      throw err;
+    }
 
     return {
       filename,
@@ -187,6 +291,25 @@ export class LocalStorageService extends StorageService {
       if (err?.code === 'ENOENT') return null;
       throw err;
     }
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    const filePath = this.resolveKey(key);
+    try {
+      await fs.promises.unlink(filePath);
+    } catch (err: any) {
+      if (err?.code === 'ENOENT') return;
+      throw err;
+    }
+  }
+
+  /** Key must be a plain filename and resolve directly inside storageDir. */
+  private resolveKey(key: string): string {
+    if (!isPlainKey(key)) throw new InvalidStorageKeyError(key);
+    const root = path.resolve(this.storageDir);
+    const resolved = path.resolve(root, key);
+    if (path.dirname(resolved) !== root) throw new InvalidStorageKeyError(key);
+    return resolved;
   }
 }
 
@@ -231,17 +354,22 @@ export class S3StorageService extends StorageService {
     options?: StorageOptions
   ): Promise<UploadResult> {
     this.validateFile(buffer, originalName, mimeType, options);
-    const filename = this.generateRandomFilename(originalName);
+    const filename = this.generateRandomFilename(mimeType);
 
-    await this.client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: filename,
-        Body: buffer,
-        ContentType: mimeType,
-        ContentLength: buffer.length,
-      })
-    );
+    try {
+      await this.client.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: filename,
+          Body: buffer,
+          ContentType: mimeType,
+          ContentLength: buffer.length,
+        })
+      );
+    } catch (err) {
+      await this.deleteFile(filename).catch(() => undefined);
+      throw err;
+    }
 
     return {
       filename,
@@ -265,6 +393,16 @@ export class S3StorageService extends StorageService {
       };
     } catch (err: any) {
       if (err?.name === 'NoSuchKey' || err?.$metadata?.httpStatusCode === 404) return null;
+      throw err;
+    }
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    if (!isPlainKey(key)) throw new InvalidStorageKeyError(key);
+    try {
+      await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
+    } catch (err: any) {
+      if (err?.name === 'NoSuchKey' || err?.$metadata?.httpStatusCode === 404) return;
       throw err;
     }
   }

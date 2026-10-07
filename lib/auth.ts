@@ -3,35 +3,76 @@ import CredentialsProvider from 'next-auth/providers/credentials';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
 import bcrypt from 'bcryptjs';
 import { prisma } from './db';
+import {
+  checkLoginAllowed,
+  cleanupOldAttempts,
+  clientIpFromHeaders,
+  normalizeEmail,
+  recordLoginFailure,
+  recordLoginSuccess,
+} from './loginLimiter';
 
-// Simple in-memory rate limiting map for credential login attempts
-const loginAttempts = new Map<string, { count: number; resetTime: number }>();
-const MAX_ATTEMPTS = 5;
-const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+const GENERIC_LOGIN_ERROR = 'Invalid email or password.';
+const RATE_LIMIT_ERROR = 'Too many login attempts. Please try again after 15 minutes.';
 
-function checkRateLimit(key: string): boolean {
-  const now = Date.now();
-  const record = loginAttempts.get(key);
-
-  if (!record) {
-    loginAttempts.set(key, { count: 1, resetTime: now + LOCKOUT_MS });
-    return true;
-  }
-
-  if (now > record.resetTime) {
-    loginAttempts.set(key, { count: 1, resetTime: now + LOCKOUT_MS });
-    return true;
-  }
-
-  if (record.count >= MAX_ATTEMPTS) {
-    return false;
-  }
-
-  record.count += 1;
-  return true;
+// Compared against when the user does not exist, so response time does not reveal account existence.
+let dummyHash: string | null = null;
+function getDummyHash(): string {
+  if (!dummyHash) dummyHash = bcrypt.hashSync('dummy-password-for-timing-equalisation', 12);
+  return dummyHash;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 const isProduction = process.env.NODE_ENV === 'production';
+
+/**
+ * Credentials login with PostgreSQL-backed throttling (see lib/loginLimiter.ts).
+ * Exported for unit tests. Fails CLOSED: if the limiter/DB is unavailable the login is denied.
+ */
+export async function authorizeCredentials(
+  credentials: Record<string, string> | undefined,
+  req?: { headers?: unknown },
+) {
+  if (!credentials?.email || !credentials?.password) {
+    throw new Error(GENERIC_LOGIN_ERROR);
+  }
+
+  const emailKey = normalizeEmail(credentials.email);
+  const ipKey = clientIpFromHeaders(req?.headers);
+
+  try {
+    const decision = await checkLoginAllowed(emailKey, ipKey);
+    if (!decision.allowed) {
+      throw new Error(RATE_LIMIT_ERROR);
+    }
+    if (decision.delayMs > 0) await sleep(decision.delayMs);
+
+    const user = await prisma.user.findUnique({ where: { email: emailKey } });
+
+    // Always run one bcrypt compare (dummy hash when the user is missing) to equalise timing.
+    const hash = user?.passwordHash || getDummyHash();
+    const valid = await bcrypt.compare(String(credentials.password).slice(0, 1024), hash);
+
+    if (!user || !user.passwordHash || !valid) {
+      await recordLoginFailure(emailKey, ipKey);
+      void cleanupOldAttempts();
+      throw new Error(GENERIC_LOGIN_ERROR);
+    }
+
+    await recordLoginSuccess(emailKey, ipKey);
+    void cleanupOldAttempts();
+
+    return { id: user.id, name: user.name, email: user.email, role: user.role };
+  } catch (err) {
+    if (err instanceof Error && (err.message === GENERIC_LOGIN_ERROR || err.message === RATE_LIMIT_ERROR)) {
+      throw err;
+    }
+    // DB/limiter failure: deny (fail closed) without leaking internals.
+    console.error('Login authorize failed closed:', err);
+    throw new Error(GENERIC_LOGIN_ERROR);
+  }
+}
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -79,39 +120,8 @@ export const authOptions: NextAuthOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error('Invalid email or password.');
-        }
-
-        const emailClean = credentials.email.toLowerCase().trim();
-
-        // Rate limit check to prevent brute-force attacks
-        if (!checkRateLimit(emailClean)) {
-          throw new Error('Too many login attempts. Please try again after 15 minutes.');
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { email: emailClean },
-        });
-
-        // Do not leak email existence: return generic invalid message
-        if (!user || !user.passwordHash) {
-          throw new Error('Invalid email or password.');
-        }
-
-        const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
-
-        if (!isValid) {
-          throw new Error('Invalid email or password.');
-        }
-
-        return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-        };
+      async authorize(credentials, req) {
+        return authorizeCredentials(credentials as Record<string, string> | undefined, req as { headers?: unknown });
       },
     }),
   ],
@@ -130,6 +140,16 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
+    // Only same-origin redirects after sign-in/out (blocks open redirects via callbackUrl).
+    async redirect({ url, baseUrl }) {
+      if (url.startsWith('/') && !url.startsWith('//') && !url.includes('\\')) return `${baseUrl}${url}`;
+      try {
+        if (new URL(url).origin === new URL(baseUrl).origin) return url;
+      } catch {
+        /* fall through */
+      }
+      return baseUrl;
+    },
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
@@ -138,19 +158,50 @@ export async function getAuthSession() {
   return await getServerSession(authOptions);
 }
 
-export async function requireAdminSession() {
-  const session = await getAuthSession();
+export type AdminCheck =
+  | { authorized: true; reason: 'Authorized'; session: NonNullable<Awaited<ReturnType<typeof getAuthSession>>>; role: 'ADMIN' | 'SUPER_ADMIN' }
+  | { authorized: false; reason: string; session: Awaited<ReturnType<typeof getAuthSession>> };
 
-  if (!session || !session.user) {
+/**
+ * Re-reads the user from PostgreSQL on EVERY call (nothing cached across requests), so a deleted or
+ * demoted admin loses access immediately instead of when the 24h JWT expires. The User model has no
+ * "disabled" flag, so a missing user or a non-admin role is treated as revoked.
+ *
+ *  - no session, or user no longer exists  -> reason 'Unauthenticated' (guardAdmin: 401)
+ *  - user exists but role is not ADMIN/SUPER_ADMIN -> 'Forbidden: Admin role required' (403)
+ * The role used is the DB role, never the one stored in the JWT.
+ * A DB failure denies access (fail closed).
+ */
+export async function requireAdminSession(): Promise<AdminCheck> {
+  const session = await getAuthSession();
+  const sessionUser = session?.user as { id?: string } | undefined;
+
+  if (!session || !sessionUser?.id) {
     return { authorized: false, reason: 'Unauthenticated', session: null };
   }
 
-  const role = (session.user as any).role;
-  if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+  let dbUser: { id: string; email: string; role: string } | null;
+  try {
+    dbUser = await prisma.user.findUnique({
+      where: { id: sessionUser.id },
+      select: { id: true, email: true, role: true },
+    });
+  } catch (err) {
+    console.error('requireAdminSession: user lookup failed (denying)', err);
     return { authorized: false, reason: 'Forbidden: Admin role required', session };
   }
 
-  return { authorized: true, reason: 'Authorized', session };
+  if (!dbUser) {
+    return { authorized: false, reason: 'Unauthenticated', session: null };
+  }
+  if (dbUser.role !== 'ADMIN' && dbUser.role !== 'SUPER_ADMIN') {
+    return { authorized: false, reason: 'Forbidden: Admin role required', session };
+  }
+
+  // Reflect the DB truth in the session object handed to handlers.
+  (session.user as any).role = dbUser.role;
+  (session.user as any).email = dbUser.email;
+  return { authorized: true, reason: 'Authorized', session, role: dbUser.role };
 }
 
 export async function requireAdmin() {
