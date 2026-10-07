@@ -9,14 +9,33 @@ export const dynamic = 'force-dynamic';
 const CUSTOMER_MIME = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 const CUSTOMER_MAX_BYTES = 10 * 1024 * 1024;
 
-export async function POST(req: NextRequest) {
-  // Authentication required: files are recorded against the uploading user and
-  // can only be read back by that user (or an admin) via /api/uploads/file/[filename].
-  const session = await getAuthSession();
-  const userId = (session?.user as { id?: string } | undefined)?.id;
-  if (!session?.user || !userId) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+// Checkout is guest-only, so customization artwork uploads must work without an account.
+// Guards: strict type allowlist, size cap, per-IP rate limit. Files are PRIVATE: they are readable
+// only by an admin (or the owning user when logged in) via /api/uploads/file/[filename].
+const hits = new Map<string, number[]>();
+const WINDOW_MS = 10 * 60 * 1000;
+const MAX_UPLOADS_PER_WINDOW = 12;
+
+function rateLimited(ip: string): boolean {
+  const now = Date.now();
+  const recent = (hits.get(ip) || []).filter((t) => now - t < WINDOW_MS);
+  if (recent.length >= MAX_UPLOADS_PER_WINDOW) {
+    hits.set(ip, recent);
+    return true;
   }
+  recent.push(now);
+  hits.set(ip, recent);
+  if (hits.size > 5000) hits.clear();
+  return false;
+}
+
+export async function POST(req: NextRequest) {
+  const ip = (req.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
+  if (rateLimited(ip)) {
+    return NextResponse.json({ error: 'Too many uploads. Please try again later.' }, { status: 429 });
+  }
+  const session = await getAuthSession();
+  const userId = (session?.user as { id?: string } | undefined)?.id ?? null;
 
   try {
     const declared = Number(req.headers.get('content-length') || 0);
