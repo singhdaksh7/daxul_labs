@@ -236,3 +236,18 @@ docker run --rm -v daxul_labs_uploads_data:/app/uploads -v /var/backups/daxul/up
 - [ ] **Status Persistence**: Status remains updated after container restart (`docker compose restart`).
 - [ ] **Public Tracking**: `/track` with Order ID + matching Email/Phone shows live status; lookup with only Order ID fails.
 - [ ] **Artwork Privacy**: Customer cannot access another customer's uploaded artwork.
+
+## Scheduled stock-reservation release (CRON_SECRET)
+
+Unpaid prepaid orders reserve stock for `SiteSettings.reservationMinutes` (default 60). Expired reservations are released by `POST /api/internal/release-reservations` (bearer token = `CRON_SECRET`). The endpoint returns 503 if `CRON_SECRET` is unset, 401 on a wrong token. Details: `docs/RESERVATIONS.md`.
+
+1. Add `CRON_SECRET=<output of: openssl rand -hex 32>` to `/opt/daxul_labs/.env` (type/paste it directly on the VPS; never commit it, never put it in a crontab line).
+2. `docker compose up -d app` so the container receives it.
+3. Install the cron job as the deploy user (`crontab -e`), every 5 minutes:
+
+   ```
+   */5 * * * * /opt/daxul_labs/scripts/release-reservations-cron.sh >> "$HOME/daxul-release.log" 2>&1
+   ```
+
+   The script calls the endpoint from inside `daxul_labs_app` (the app has no published host port), reads the secret from the container environment, and logs only a timestamp, the outcome and the released/failed counts.
+4. Check: `tail ~/daxul-release.log` should show `ok {"ok":true,"released":0,"failed":0}` lines.

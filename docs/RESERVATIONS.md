@@ -33,12 +33,18 @@ row so staff can fulfil or refund.
 
 ## Scheduling from the VPS host cron
 
-Set `CRON_SECRET` in the app's environment (not in the repo). On the host keep the secret in a root-only
-file, e.g. `/etc/daxul/cron.env` (`chmod 600`) containing `CRON_SECRET=...`, then add to `crontab -e`:
+The app container has no published host port (only Traefik reaches it), so the job calls the endpoint
+**from inside the container**. The secret lives only in the VPS `.env` (passed to the container by
+`docker-compose.yml`); the cron line never contains or reads it.
+
+1. On the VPS, add `CRON_SECRET=<long random value>` to `/opt/daxul_labs/.env` (e.g. paste the output of
+   `openssl rand -hex 32` yourself) and run `docker compose up -d app` so the container picks it up.
+2. Install the cron entry for the deploy user (`crontab -e`), every 5 minutes:
 
 ```
-*/5 * * * * . /etc/daxul/cron.env && curl -fsS -m 30 -X POST -H "Authorization: Bearer $CRON_SECRET" http://127.0.0.1:3000/api/internal/release-reservations >/dev/null 2>>/var/log/daxul-release.log
+*/5 * * * * /opt/daxul_labs/scripts/release-reservations-cron.sh >> "$HOME/daxul-release.log" 2>&1
 ```
 
-Use the internal address/port the app listens on; do not route it through a public URL if you can avoid it.
-The response is `{"ok":true,"released":N,"failed":M}`.
+`scripts/release-reservations-cron.sh` runs `wget` inside `daxul_labs_app`, sends
+`Authorization: Bearer $CRON_SECRET` (read from the container's own environment), and logs only a
+timestamp, the HTTP outcome and the `{"ok":true,"released":N,"failed":M}` counts - never the secret.

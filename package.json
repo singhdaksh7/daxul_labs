@@ -12,8 +12,7 @@
     "qa:e2e:list": "playwright test -c e2e/playwright.config.ts --list",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts",
-    "test": "vitest run"
+    "prisma:seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1146.0",
@@ -42,6 +41,6 @@
     "ts-node": "^10.9.2",
     "typescript": "^5",
     "vite": "^7.3.7",
-    "vitest": "^5.0.3"
+    "vitest": "^3.2.7"
   }
 }
