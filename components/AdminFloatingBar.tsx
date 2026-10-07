@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { signOut } from 'next-auth/react';
 import { useStore } from '@/lib/storeContext';
-import { Settings, Eye, RotateCcw, AlertCircle, ShoppingBag, ShieldCheck, Sparkles } from 'lucide-react';
+import { Settings, Eye, RotateCcw, AlertCircle, ShoppingBag, ShieldCheck, Sparkles, LogOut } from 'lucide-react';
 
 export default function AdminFloatingBar() {
   const pathname = usePathname();
@@ -47,6 +48,17 @@ export default function AdminFloatingBar() {
           <Settings className="w-3.5 h-3.5" />
           <span>Admin Dashboard</span>
         </Link>
+      )}
+
+      {isAdminPage && !pathname?.startsWith('/admin/login') && (
+        <button
+          onClick={() => signOut({ callbackUrl: '/admin/login' })}
+          title="Sign out"
+          className="p-2 text-gray-400 hover:text-[#C8FF35] hover:bg-[#242426] rounded-full transition-colors"
+          aria-label="Sign out"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
       )}
 
       {/* Reset button */}

@@ -7,14 +7,18 @@ export async function middleware(request: NextRequest) {
 
   // Protect /admin routes (except /admin/login)
   if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
-    const token = await getToken({
-      req: request,
-      secret: process.env.NEXTAUTH_SECRET || 'daxul_labs_super_secret_jwt_key_2026',
-    });
+    const secret = process.env.NEXTAUTH_SECRET;
+    if (!secret) {
+      // Fail closed: never authenticate against a predictable fallback secret.
+      console.error('NEXTAUTH_SECRET is not set; refusing admin access.');
+      return NextResponse.json({ error: 'Server misconfiguration' }, { status: 500 });
+    }
+
+    const token = await getToken({ req: request, secret });
 
     if (!token) {
       const loginUrl = new URL('/admin/login', request.url);
-      loginUrl.searchParams.set('callbackUrl', encodeURIComponent(pathname));
+      loginUrl.searchParams.set('callbackUrl', pathname);
       return NextResponse.redirect(loginUrl);
     }
 

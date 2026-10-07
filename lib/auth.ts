@@ -131,7 +131,7 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET || 'daxul_labs_super_secret_jwt_key_2026',
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 export async function getAuthSession() {
