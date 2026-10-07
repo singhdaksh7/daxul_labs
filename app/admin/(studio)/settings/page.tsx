@@ -39,12 +39,13 @@ const GROUPS: { title: string; fields: ReturnType<typeof TEXT>[] }[] = [
     ],
   },
   {
-    title: "Shipping & COD (INR)",
+    title: "Shipping, COD & stock hold (INR)",
     fields: [
       TEXT("standardShippingFee", "Standard shipping fee", undefined, "number"),
       TEXT("expressShippingFee", "Express shipping fee", undefined, "number"),
       TEXT("freeShippingThreshold", "Free shipping threshold", undefined, "number"),
       TEXT("codFee", "COD fee", undefined, "number"),
+      TEXT("reservationMinutes", "Unpaid prepaid order stock hold (minutes)", "10 to 10080. After this, unpaid prepaid orders are cancelled and stock is released. COD orders are never expired.", "number"),
     ],
   },
   {
@@ -61,6 +62,8 @@ const GROUPS: { title: string; fields: ReturnType<typeof TEXT>[] }[] = [
 
 const TOGGLES: [string, string][] = [
   ["announcementBarEnabled", "Show announcement bar"],
+  ["standardShippingEnabled", "Standard shipping enabled"],
+  ["expressShippingEnabled", "Express shipping enabled"],
   ["globalCodEnabled", "Cash on delivery enabled"],
   ["codFeeEnabled", "Charge COD fee"],
   ["customProductsPrepaidOnly", "Custom products are prepaid only"],
@@ -94,8 +97,12 @@ export default function AdminSettingsPage() {
 
   const save = async () => {
     if (!s) return;
-    setSaving(true);
     setNotice(null);
+    if (!s.standardShippingEnabled && !s.expressShippingEnabled) {
+      setSaving(false);
+      return setNotice({ kind: "error", text: "At least one shipping method must be enabled." });
+    }
+    setSaving(true);
     const body: S = { ...s };
     for (const g of GROUPS) for (const f of g.fields) if (f.type === "number") body[f.key] = Number(body[f.key]);
     const res = await fetch("/api/admin/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -137,7 +144,7 @@ export default function AdminSettingsPage() {
                   className={inputCls}
                   type={f.type === "number" ? "number" : "text"}
                   min={f.type === "number" ? 0 : undefined}
-                  step={f.type === "number" ? "any" : undefined}
+                  step={f.type === "number" ? (f.key === "reservationMinutes" ? 1 : "any") : undefined}
                   value={s[f.key] ?? ""}
                   onChange={(e) => setS({ ...s, [f.key]: e.target.value })}
                 />

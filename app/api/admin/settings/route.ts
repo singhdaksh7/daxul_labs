@@ -38,6 +38,9 @@ const schema = z
     standardShippingFee: money,
     expressShippingFee: money,
     freeShippingThreshold: money,
+    standardShippingEnabled: z.boolean(),
+    expressShippingEnabled: z.boolean(),
+    reservationMinutes: z.number().int().min(10).max(10080),
     globalCodEnabled: z.boolean(),
     codFeeEnabled: z.boolean(),
     codFee: money,
@@ -113,6 +116,14 @@ export async function PUT(req: Request) {
 
   try {
     const before = (await loadOrCreate()) as unknown as Record<string, unknown>;
+    const stdOn = p.data.standardShippingEnabled ?? (before.standardShippingEnabled as boolean);
+    const expOn = p.data.expressShippingEnabled ?? (before.expressShippingEnabled as boolean);
+    if (!stdOn && !expOn) {
+      return NextResponse.json(
+        { error: 'At least one shipping method must stay enabled (Standard cannot be disabled while Express is disabled).' },
+        { status: 400 },
+      );
+    }
     const data: Record<string, unknown> = {};
     const diff: Record<string, { from: unknown; to: unknown }> = {};
     for (const [k, v] of Object.entries(p.data)) {

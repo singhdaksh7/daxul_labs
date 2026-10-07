@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@/lib/db';
 import { guardAdmin, parseBody, logAdminAction, serverError } from '@/lib/adminApi';
 import { getOrderDetail, listOrders } from '@/lib/adminQueries';
+import { maybeReleaseExpiredReservations } from '@/lib/reservations';
 import {
   ORDER_FILTERS,
   canCancel,
@@ -18,6 +19,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   const g = await guardAdmin();
   if (!g.ok) return g.response;
+  await maybeReleaseExpiredReservations(); // throttled, errors swallowed
   try {
     const sp = req.nextUrl.searchParams;
     const id = sp.get('id');

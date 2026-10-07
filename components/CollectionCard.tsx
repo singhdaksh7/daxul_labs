@@ -22,7 +22,7 @@ export default function CollectionCard({ collection }: CollectionCardProps) {
   return (
     <Link
       href={collection.href}
-      className="group flex-shrink-0 w-[270px] sm:w-[300px] lg:w-[320px] bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-[#E5E0D5] flex flex-col snap-start"
+      className="group flex-shrink-0 w-[270px] sm:w-[300px] lg:w-[320px] bg-white daxul-card-sm overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-[#E5E0D5] flex flex-col snap-start"
     >
       {/* Card Image Container */}
       <div className="relative aspect-square w-full bg-daxul-dark overflow-hidden">

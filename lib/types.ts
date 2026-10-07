@@ -297,6 +297,8 @@ export interface PublicSiteSettings {
   footerText: string;
   standardShippingFee: number;
   expressShippingFee: number;
+  standardShippingEnabled: boolean;
+  expressShippingEnabled: boolean;
   freeShippingThreshold: number;
   codFee: number;
   codFeeEnabled: boolean;

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useCart } from '@/lib/storeContext';
 import { useSiteSettings } from '@/lib/siteContext';
 import { formatMoney } from '@/lib/cartPricing';
+import { useQuote } from '@/lib/useQuote';
 import { X, Trash2, Plus, Minus, ArrowRight, ShieldCheck, Tag, ShoppingBag, Truck } from 'lucide-react';
 
 export default function CartDrawer() {
@@ -22,6 +23,9 @@ export default function CartDrawer() {
 
   const [couponInput, setCouponInput] = useState('');
 
+  // Server quote (debounced). The local arithmetic below is only the fallback estimate.
+  const { quote, loading: quoteLoading } = useQuote({ cart, couponCode, enabled: isCartOpen });
+
   if (!isCartOpen) return null;
 
   const subtotal = cart.reduce((acc, item) => acc + item.unitPrice * item.quantity, 0);
@@ -32,9 +36,16 @@ export default function CartDrawer() {
       !item.codEnabled ||
       (item.customizable && siteSettings.customProductsPrepaidOnly)
   );
-  const freeShippingThreshold = siteSettings.freeShippingThreshold;
-  const progressPercent = freeShippingThreshold > 0 ? Math.min(100, (subtotal / freeShippingThreshold) * 100) : 100;
-  const amountNeededForFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
+  const freeShippingThreshold = quote?.shipping.freeShippingThreshold ?? siteSettings.freeShippingThreshold;
+  const shownSubtotal = quote ? quote.subtotal : subtotal;
+  const shownDiscount = quote ? quote.discountAmount : 0;
+  const afterDiscount = Math.max(0, shownSubtotal - shownDiscount);
+  const estShipping = afterDiscount >= freeShippingThreshold ? 0 : siteSettings.standardShippingFee;
+  const shownShipping = quote ? quote.shipping.fee : estShipping;
+  const shownTotal = quote ? quote.total : afterDiscount + estShipping;
+  const progressPercent = freeShippingThreshold > 0 ? Math.min(100, (afterDiscount / freeShippingThreshold) * 100) : 100;
+  const amountNeededForFreeShipping = Math.max(0, freeShippingThreshold - afterDiscount);
+  const couponQuote = quote?.coupon ?? null;
 
   const handleApplyCoupon = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +110,7 @@ export default function CartDrawer() {
               <p className="text-sm font-semibold uppercase tracking-wider text-gray-300">Your cart is currently empty</p>
               <button
                 onClick={() => setIsCartOpen(false)}
-                className="bg-daxul-lime text-daxul-black px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-wider hover:bg-white transition-colors shadow-lg shadow-daxul-lime/10"
+                className="bg-daxul-lime text-daxul-black px-6 py-2.5 daxul-btn-pill text-xs font-bold uppercase tracking-wider hover:bg-white transition-colors shadow-lg shadow-daxul-lime/10"
               >
                 Explore Catalog
               </button>
@@ -108,7 +119,7 @@ export default function CartDrawer() {
             cart.map((item) => (
               <div key={item.id} className="pt-4 first:pt-0 flex gap-4">
                 {/* Image */}
-                <div className="w-20 h-20 bg-daxul-dark rounded-xl overflow-hidden relative border border-daxul-graphite shrink-0">
+                <div className="w-20 h-20 bg-daxul-dark daxul-card-sm overflow-hidden relative border border-daxul-graphite shrink-0">
                   <img
                     src={item.image}
                     alt={item.name}
@@ -191,12 +202,12 @@ export default function CartDrawer() {
                   placeholder="PROMO CODE (e.g. DAXUL10)"
                   value={couponCode}
                   onChange={(e) => setCouponCode(e.target.value)}
-                  className="w-full bg-daxul-black border border-daxul-graphite rounded-xl pl-9 pr-3 py-2 text-xs text-white uppercase placeholder:text-gray-600 focus:outline-none focus:border-daxul-lime"
+                  className="w-full bg-daxul-black border border-daxul-graphite daxul-btn pl-9 pr-3 py-2 text-xs text-white uppercase placeholder:text-gray-600 focus:outline-none focus:border-daxul-lime"
                 />
               </div>
               <button
                 type="submit"
-                className="bg-daxul-graphite hover:bg-daxul-lime hover:text-daxul-black px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all"
+                className="bg-daxul-graphite hover:bg-daxul-lime hover:text-daxul-black px-4 py-2 daxul-btn text-xs font-bold uppercase transition-all"
               >
                 Apply
               </button>
@@ -204,8 +215,20 @@ export default function CartDrawer() {
 
             {/* Applied Coupon Info */}
             {couponCode && (
-              <div className="flex justify-between items-center text-xs bg-daxul-lime/10 border border-daxul-lime/30 p-2 rounded-lg text-daxul-lime">
-                <span>Code {couponCode} will be verified at checkout</span>
+              <div
+                className={`flex justify-between items-center text-xs p-2 rounded-lg border ${
+                  couponQuote && !couponQuote.valid
+                    ? 'bg-red-500/10 border-red-500/30 text-red-300'
+                    : 'bg-daxul-lime/10 border-daxul-lime/30 text-daxul-lime'
+                }`}
+              >
+                <span>
+                  {!couponQuote
+                    ? `Checking code ${couponCode}...`
+                    : couponQuote.valid
+                      ? `Code ${couponQuote.code} applied: -${money(couponQuote.discountAmount)}`
+                      : couponQuote.message}
+                </span>
                 <button onClick={() => setCouponCode('')} className="underline text-gray-400 hover:text-white text-[10px]">
                   Remove
                 </button>
@@ -216,24 +239,27 @@ export default function CartDrawer() {
             <div className="space-y-1.5 text-xs text-gray-300 pt-1 border-t border-daxul-graphite">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>{money(subtotal)}</span>
+                <span>{money(shownSubtotal)}</span>
               </div>
+              {shownDiscount > 0 && (
+                <div className="flex justify-between text-daxul-lime">
+                  <span>Discount</span>
+                  <span>-{money(shownDiscount)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span>Est. Shipping</span>
+                <span>{quote ? 'Shipping' : 'Est. Shipping'}</span>
                 <span>
-                  {subtotal >= freeShippingThreshold ? (
-                    <span className="text-daxul-lime">FREE</span>
-                  ) : (
-                    money(siteSettings.standardShippingFee)
-                  )}
+                  {shownShipping === 0 ? <span className="text-daxul-lime">FREE</span> : money(shownShipping)}
                 </span>
               </div>
-              <div className="flex justify-between text-sm font-extrabold text-white pt-2 border-t border-daxul-graphite">
-                <span>Estimated Total</span>
-                <span className="text-daxul-lime">
-                  {money(subtotal + (subtotal >= freeShippingThreshold ? 0 : siteSettings.standardShippingFee))}
-                </span>
+              <div className={`flex justify-between text-sm font-extrabold text-white pt-2 border-t border-daxul-graphite ${quoteLoading ? 'opacity-60' : ''}`}>
+                <span>{quote ? 'Total' : 'Estimated Total'}</span>
+                <span className="text-daxul-lime">{money(shownTotal)}</span>
               </div>
+              {quote && quote.issues.some((i) => i.code === 'stock' || i.code === 'line') && (
+                <div className="text-[10px] text-amber-300">{quote.issues.find((i) => i.code === 'stock' || i.code === 'line')?.message}</div>
+              )}
             </div>
 
             {/* COD Notice if prepaid only items */}
@@ -247,7 +273,7 @@ export default function CartDrawer() {
             <Link
               href="/checkout"
               onClick={() => setIsCartOpen(false)}
-              className="w-full flex items-center justify-center gap-2 bg-daxul-lime text-daxul-black font-extrabold py-3.5 rounded-xl uppercase tracking-widest text-xs shadow-xl shadow-daxul-lime/20 hover:bg-white transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-daxul-lime text-daxul-black font-extrabold py-3.5 daxul-btn uppercase tracking-widest text-xs shadow-xl shadow-daxul-lime/20 hover:bg-white transition-colors"
             >
               <span>Proceed to Checkout</span>
               <ArrowRight className="w-4 h-4" />

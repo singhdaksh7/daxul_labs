@@ -48,3 +48,11 @@ body {
 .beam-glow {
   background: radial-gradient(ellipse at center, rgba(255, 230, 180, 0.15) 0%, rgba(11, 11, 12, 0) 70%);
 }
+
+/* Theme radius presets (set from ThemeSettings in app/layout.tsx). Fallbacks keep the default look. */
+.daxul-card { border-radius: var(--daxul-card-radius, 1rem); }
+.daxul-card-lg { border-radius: var(--daxul-card-radius, 1.5rem); }
+.daxul-card-sm { border-radius: var(--daxul-card-radius, 0.75rem); }
+.daxul-btn { border-radius: var(--daxul-button-radius, 0.75rem); }
+.daxul-btn-sm { border-radius: var(--daxul-button-radius, 0.5rem); }
+.daxul-btn-pill { border-radius: var(--daxul-button-radius, 9999px); }
