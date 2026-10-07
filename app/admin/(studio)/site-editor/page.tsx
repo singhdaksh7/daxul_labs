@@ -280,7 +280,7 @@ export default function AdminSiteEditorPage() {
   const isModified = JSON.stringify(draftDataMap[selectedKey]) !== JSON.stringify(publishedDataMap[selectedKey]);
 
   return (
-    <div className="min-h-screen bg-[#0B0B0C] text-white flex flex-col font-sans selection:bg-[#C8FF35] selection:text-[#0B0B0C]">
+    <div className="min-h-full bg-[#0B0B0C] text-white flex flex-col font-sans selection:bg-[#C8FF35] selection:text-[#0B0B0C]">
       
       {/* Top Admin Editor Bar */}
       <header className="bg-[#151515] border-b border-[#242426] sticky top-0 z-40 px-4 sm:px-6 py-3 flex items-center justify-between shadow-2xl">

@@ -17,6 +17,9 @@ export default function AdminFloatingBar() {
   // Business metrics count for quick bar
   const pendingOrders = orders.filter((o) => o.status === 'new' || o.status === 'design_pending').length;
 
+  // The Studio OS shell has its own navigation; avoid a second floating bar on /admin routes.
+  if (isAdminPage) return null;
+
   return (
     <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 bg-[#151515]/95 backdrop-blur-md border border-[#242426] p-2 rounded-full shadow-2xl transition-all hover:border-[#C8FF35]/50 group">
       
