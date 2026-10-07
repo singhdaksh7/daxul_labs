@@ -250,6 +250,9 @@ model Order {
   courierName        String?
   proofImageUrl      String?
   trackingUrl        String?
+  shippingMethod     String              @default("STANDARD")
+  reservationExpiresAt DateTime?
+  stockReleasedAt    DateTime?
   internalNotes      String?             @db.Text
   couponCode         String?
   items              OrderItem[]
@@ -382,6 +385,9 @@ model SiteSettings {
   currencySymbol           String  @default("₹")
   currencyCode             String  @default("INR")
   whatsAppUrl              String?
+  standardShippingEnabled  Boolean @default(true)
+  expressShippingEnabled   Boolean @default(false)
+  reservationMinutes       Int     @default(60)
   youtubeUrl               String?
   facebookUrl              String?
   instagramHandle          String  @default("daxullabs")
@@ -455,4 +461,16 @@ model AuditLog {
   entityId       String?
   details        Json?
   timestamp      DateTime @default(now())
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  emailKey  String   // normalized email (lowercased, trimmed) or sha256 of it
+  ipKey     String   // client IP (or "unknown")
+  success   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([emailKey, ipKey, createdAt])
+  @@index([ipKey, createdAt])
+  @@index([createdAt])
 }
