@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { requireAdminSession } from '@/lib/auth';
+import { z } from 'zod';
+import { guardAdmin, parseBody, serverError } from '@/lib/adminApi';
 import {
   getAdminCmsSections,
   publishAllCmsSections,
@@ -7,50 +8,46 @@ import {
   resetAllCmsSectionsToDefault,
 } from '@/lib/cmsService';
 
+export const dynamic = 'force-dynamic';
+
+const SECTION_KEYS = ['HEADER', 'HERO', 'FEATURED_PRODUCT', 'COLLECTIONS', 'CUSTOMIZATION', 'LAB', 'BUILDING_DAXUL', 'FOOTER'] as const;
+
+const postSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('publish_all') }),
+  z.object({ action: z.literal('reset_all_default') }),
+  z.object({ action: z.literal('reorder'), order: z.array(z.enum(SECTION_KEYS)).max(20) }),
+]);
+
+// Audit trail: every mutation below writes a CmsAuditLog row inside lib/cmsService.ts.
+
 export async function GET() {
-  const { authorized, session } = await requireAdminSession();
-  if (!authorized) {
-    return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 401 });
-  }
+  const g = await guardAdmin();
+  if (!g.ok) return g.response;
 
   try {
     const sections = await getAdminCmsSections();
     return NextResponse.json({ sections });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Failed to fetch CMS sections' }, { status: 500 });
+  } catch (err) {
+    return serverError(err, 'GET /api/admin/cms/sections');
   }
 }
 
 export async function POST(req: Request) {
-  const { authorized, session } = await requireAdminSession();
-  if (!authorized) {
-    return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 401 });
-  }
+  const g = await guardAdmin();
+  if (!g.ok) return g.response;
+  const p = await parseBody(req, postSchema);
+  if (!p.ok) return p.response;
 
   try {
-    const body = await req.json();
-    const adminEmail = session?.user?.email || 'admin@daxullabs.com';
-
-    if (body.action === 'publish_all') {
-      const result = await publishAllCmsSections(adminEmail);
-      return NextResponse.json(result);
+    const adminEmail = g.admin.email;
+    if (p.data.action === 'publish_all') {
+      return NextResponse.json(await publishAllCmsSections(adminEmail));
     }
-
-    if (body.action === 'reorder') {
-      if (!Array.isArray(body.order)) {
-        return NextResponse.json({ error: 'Invalid section order array' }, { status: 400 });
-      }
-      const result = await reorderCmsSections(body.order, adminEmail);
-      return NextResponse.json(result);
+    if (p.data.action === 'reorder') {
+      return NextResponse.json(await reorderCmsSections(p.data.order, adminEmail));
     }
-
-    if (body.action === 'reset_all_default') {
-      const result = await resetAllCmsSectionsToDefault(adminEmail);
-      return NextResponse.json(result);
-    }
-
-    return NextResponse.json({ error: 'Invalid action parameter' }, { status: 400 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Failed to process admin CMS action' }, { status: 500 });
+    return NextResponse.json(await resetAllCmsSectionsToDefault(adminEmail));
+  } catch (err) {
+    return serverError(err, 'POST /api/admin/cms/sections');
   }
 }
