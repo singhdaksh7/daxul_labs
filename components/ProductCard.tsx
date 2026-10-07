@@ -35,7 +35,7 @@ export default function ProductCard({ product }: { product: StoreProduct }) {
     });
 
   return (
-    <div className="bg-daxul-dark border border-daxul-graphite hover:border-daxul-lime rounded-2xl overflow-hidden flex flex-col justify-between transition-all duration-300 group shadow-lg">
+    <div className="bg-daxul-dark border border-daxul-graphite hover:border-daxul-lime daxul-card overflow-hidden flex flex-col justify-between transition-all duration-300 group shadow-lg">
       {/* Image */}
       <Link href={`/shop/${product.slug}`} className="relative aspect-square bg-daxul-black overflow-hidden block">
         {image ? (
@@ -91,7 +91,7 @@ export default function ProductCard({ product }: { product: StoreProduct }) {
             )}
             <Link
               href={`/shop/${product.slug}`}
-              className="bg-daxul-graphite hover:bg-daxul-lime hover:text-daxul-black text-white p-2 rounded-xl transition-all"
+              className="bg-daxul-graphite hover:bg-daxul-lime hover:text-daxul-black text-white p-2 daxul-btn transition-all"
               title="Configure options"
               aria-label={`Configure ${product.name}`}
             >
@@ -100,7 +100,7 @@ export default function ProductCard({ product }: { product: StoreProduct }) {
             {isSimple && product.inStock && (
               <button
                 onClick={quickAdd}
-                className="bg-daxul-lime text-daxul-black hover:bg-white p-2 rounded-xl transition-all font-bold"
+                className="bg-daxul-lime text-daxul-black hover:bg-white p-2 daxul-btn transition-all font-bold"
                 title="Add to Cart"
                 aria-label={`Add ${product.name} to cart`}
               >

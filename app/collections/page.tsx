@@ -51,7 +51,7 @@ export default async function CollectionsPage() {
               <Link
                 key={col.id}
                 href={`/collections/${col.slug}`}
-                className="group bg-daxul-dark border border-daxul-graphite hover:border-daxul-lime rounded-3xl overflow-hidden shadow-xl transition-all duration-500 flex flex-col justify-between"
+                className="group bg-daxul-dark border border-daxul-graphite hover:border-daxul-lime daxul-card-lg overflow-hidden shadow-xl transition-all duration-500 flex flex-col justify-between"
               >
                 <div className="relative aspect-[4/3] bg-daxul-black overflow-hidden">
                   {col.image && (

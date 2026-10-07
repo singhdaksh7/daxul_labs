@@ -456,6 +456,8 @@ export const getSiteSettings = cache(async (): Promise<PublicSiteSettings> =>
       footerText: row.footerText,
       standardShippingFee: row.standardShippingFee,
       expressShippingFee: row.expressShippingFee,
+      standardShippingEnabled: row.standardShippingEnabled,
+      expressShippingEnabled: row.expressShippingEnabled,
       freeShippingThreshold: row.freeShippingThreshold,
       codFee: row.codFee,
       codFeeEnabled: row.codFeeEnabled,

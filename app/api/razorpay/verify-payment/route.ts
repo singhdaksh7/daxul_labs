@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRazorpayPaymentSignature } from '@/lib/razorpay';
 import { prisma } from '@/lib/db';
+import { markOrderPaid } from '@/lib/reservations';
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,56 +29,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Load order from DB and verify status & expected amount
-    const order = await prisma.order.findUnique({
-      where: { razorpayOrderId },
-      include: { items: true },
-    });
+    // 2. Atomically mark paid (race-safe against reservation expiry; see lib/reservations.ts markOrderPaid)
+    const result = await prisma.$transaction((tx) =>
+      markOrderPaid(tx, { razorpayOrderId }, { razorpayPaymentId, razorpaySignature, source: 'verify-payment' }),
+    );
 
-    if (!order) {
+    if (result.outcome === 'not_found') {
       return NextResponse.json({ error: 'Order record not found for payment' }, { status: 404 });
     }
-
-    // Check if order is already marked paid (idempotency check)
-    if (order.paymentStatus === 'paid') {
+    if (result.outcome === 'already_paid') {
       return NextResponse.json({
         success: true,
         message: 'Payment already verified and recorded',
-        orderNumber: order.orderNumber,
+        orderNumber: result.orderNumber,
       });
     }
 
-    // 3. Perform Transactional State Update & Atomic Stock Decrement
-    const updatedOrder = await prisma.$transaction(async (tx) => {
-      // Mark Order Paid
-      const updated = await tx.order.update({
-        where: { id: order.id },
-        data: {
-          paymentStatus: 'paid',
-          status: 'design_pending',
-          razorpayPaymentId,
-          razorpaySignature,
-        },
-      });
-
-      // Stock is reserved (and ledgered) at order creation in create-order; no decrement here.
-
-      // Record Order Status History
-      await tx.orderStatusHistory.create({
-        data: {
-          orderId: order.id,
-          status: 'design_pending',
-          note: `Prepaid payment verified via Razorpay Payment ID: ${razorpayPaymentId}`,
-        },
-      });
-
-      return updated;
-    });
-
     return NextResponse.json({
       success: true,
-      message: 'Payment verified and order status updated successfully',
-      orderNumber: updatedOrder.orderNumber,
+      message:
+        result.outcome === 'paid_after_release_needs_attention'
+          ? 'Payment received. Your order needs a quick manual check by our team; we will contact you shortly.'
+          : 'Payment verified and order status updated successfully',
+      orderNumber: result.orderNumber,
     });
   } catch (err: any) {
     console.error('Razorpay Signature Verification Error:', err);

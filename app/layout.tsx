@@ -47,12 +47,19 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 // Radius presets only (no arbitrary CSS values ever reach the page).
-const RADIUS_PX: Record<RadiusPreset, string> = {
+// 'md' is the storefront's built-in look, so it emits nothing and the .daxul-card / .daxul-btn
+// fallbacks in globals.css apply (default theme looks exactly as before).
+const BUTTON_RADIUS: Partial<Record<RadiusPreset, string>> = {
   none: "0px",
-  sm: "4px",
-  md: "8px",
-  lg: "16px",
+  sm: "0.25rem",
+  lg: "1rem",
   full: "9999px",
+};
+const CARD_RADIUS: Partial<Record<RadiusPreset, string>> = {
+  none: "0px",
+  sm: "0.25rem",
+  lg: "1rem",
+  full: "1.5rem",
 };
 
 export default async function RootLayout({
@@ -77,8 +84,8 @@ export default async function RootLayout({
     "--daxul-bone": theme.boneColor,
     "--daxul-graphite": theme.graphiteColor,
     "--daxul-lime": theme.accentColor,
-    "--daxul-button-radius": RADIUS_PX[theme.buttonRadius],
-    "--daxul-card-radius": RADIUS_PX[theme.borderRadius],
+    ...(BUTTON_RADIUS[theme.buttonRadius] ? { "--daxul-button-radius": BUTTON_RADIUS[theme.buttonRadius] } : {}),
+    ...(CARD_RADIUS[theme.borderRadius] ? { "--daxul-card-radius": CARD_RADIUS[theme.borderRadius] } : {}),
   } as CSSProperties;
 
   return (

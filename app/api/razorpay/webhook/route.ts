@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRazorpayWebhookSignature } from '@/lib/razorpay';
 import { prisma } from '@/lib/db';
+import { markOrderPaid } from '@/lib/reservations';
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,34 +49,8 @@ export async function POST(req: NextRequest) {
             },
           });
 
-          // Load Order
-          const order = await tx.order.findUnique({
-            where: { razorpayOrderId },
-            include: { items: true },
-          });
-
-          if (order && order.paymentStatus !== 'paid') {
-            // Update order payment status
-            await tx.order.update({
-              where: { id: order.id },
-              data: {
-                paymentStatus: 'paid',
-                status: 'design_pending',
-                razorpayPaymentId,
-              },
-            });
-
-            // Stock is reserved (and ledgered) at order creation in create-order; no decrement here.
-
-            // Record Status History
-            await tx.orderStatusHistory.create({
-              data: {
-                orderId: order.id,
-                status: 'design_pending',
-                note: `Payment captured via Razorpay Webhook [${eventId}]`,
-              },
-            });
-          }
+          // Race-safe paid transition (handles payments arriving after reservation expiry)
+          await markOrderPaid(tx, { razorpayOrderId }, { razorpayPaymentId, source: `webhook ${eventId}` });
         });
       }
     } else {

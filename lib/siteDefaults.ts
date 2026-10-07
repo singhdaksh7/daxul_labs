@@ -43,6 +43,8 @@ export const DEFAULT_PUBLIC_SETTINGS: PublicSiteSettings = {
   footerText: '© 2026 DAXUL LABS. CRAFTED ON-DEMAND IN INDIA.',
   standardShippingFee: 99,
   expressShippingFee: 199,
+  standardShippingEnabled: true,
+  expressShippingEnabled: false,
   freeShippingThreshold: 1999,
   codFee: 50,
   codFeeEnabled: true,

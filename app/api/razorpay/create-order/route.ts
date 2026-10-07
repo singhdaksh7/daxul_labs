@@ -3,14 +3,16 @@ import { z } from 'zod';
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { createRazorpayOrder } from '@/lib/razorpay';
-import { priceCart, PricingError, type PricedLine } from '@/lib/pricing';
+import { computeCheckout, PricingError, type PricedLine } from '@/lib/pricing';
+import { maybeReleaseExpiredReservations } from '@/lib/reservations';
+import { reservationExpiry } from '@/lib/reservationPlan';
 
 /**
  * Request payload (client prices are NEVER trusted; optional price hints are only
  * compared against the server result and rejected on mismatch):
  * {
  *   items: [{ productId, quantity, variantSelections: [{groupId, variantId}], customizations: {fieldId: value} }],
- *   couponCode?, paymentMethod?: 'prepaid' | 'cod',
+ *   couponCode?, paymentMethod?: 'prepaid' | 'cod', shippingMethod?: 'STANDARD' | 'EXPRESS',
  *   customer: { name, email, phone, street, city, state, pincode, country? },
  *   expectedTotal?: number   // optional; 400 if it differs from the server total
  * }
@@ -29,6 +31,7 @@ const bodySchema = z.object({
   items: z.array(itemSchema).min(1, 'Order must contain at least one item').max(50),
   couponCode: z.string().max(64).optional().nullable(),
   paymentMethod: z.enum(['prepaid', 'cod']).default('prepaid'),
+  shippingMethod: z.enum(['STANDARD', 'EXPRESS']).optional().nullable(),
   customer: z.object({
     name: z.string().trim().min(1),
     email: z.string().trim().email(),
@@ -51,15 +54,13 @@ class CheckoutError extends Error {
   }
 }
 
-const money = (n: number) => Math.round(n * 100) / 100;
-
 async function releaseOrder(orderId: string, lines: PricedLine[], couponId: string | null) {
   // Compensating transaction when Razorpay order creation fails: restore reserved stock + coupon use.
   try {
     await prisma.$transaction(async (tx) => {
       await tx.order.update({
         where: { id: orderId },
-        data: { status: 'cancelled', paymentStatus: 'failed' },
+        data: { status: 'cancelled', paymentStatus: 'failed', stockReleasedAt: new Date(), reservationExpiresAt: null },
       });
       await tx.orderStatusHistory.create({
         data: { orderId, status: 'cancelled', note: 'Payment gateway order creation failed; stock released' },
@@ -103,11 +104,18 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    const { items, couponCode, paymentMethod, customer } = parsed.data;
+    const { items, couponCode, paymentMethod, customer, shippingMethod } = parsed.data;
     const clientTotal = parsed.data.expectedTotal ?? parsed.data.totalAmount;
 
-    // 1. Authoritative pricing from PostgreSQL
-    const cart = await priceCart(items);
+    // Free any expired prepaid reservations first so their stock is purchasable (throttled, never throws).
+    await maybeReleaseExpiredReservations();
+
+    // 1. Authoritative computation: the SAME function /api/quote uses.
+    const comp = await computeCheckout({ items, couponCode, paymentMethod, shippingMethod });
+    if (comp.issues.length) {
+      return NextResponse.json({ error: comp.issues[0].message, issues: comp.issues }, { status: 400 });
+    }
+    const cart = { lines: comp.lines, subtotal: comp.subtotal };
 
     // Reject mismatched client price hints
     for (let i = 0; i < items.length; i++) {
@@ -120,55 +128,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 2. Settings: shipping, COD
-    const settings = await prisma.siteSettings.findUnique({ where: { id: 'default' } });
-    const freeShippingThreshold = settings?.freeShippingThreshold ?? 1999;
-    const standardShippingFee = settings?.standardShippingFee ?? 99;
-
-    if (paymentMethod === 'cod') {
-      if (settings && !settings.globalCodEnabled) {
-        return NextResponse.json({ error: 'Cash on delivery is currently unavailable. Please pay online.' }, { status: 400 });
-      }
-      const customPrepaid = settings?.customProductsPrepaidOnly ?? true;
-      for (const l of cart.lines) {
-        if (l.prepaidOnly || !l.codEnabled || l.customizable || (customPrepaid && l.customizations)) {
-          return NextResponse.json(
-            { error: `"${l.productName}" requires prepaid payment (COD not available).` },
-            { status: 400 },
-          );
-        }
-      }
-    }
-
-    const shippingFee = cart.subtotal >= freeShippingThreshold ? 0 : standardShippingFee;
-    const codFee = paymentMethod === 'cod' && (settings?.codFeeEnabled ?? true) ? settings?.codFee ?? 50 : 0;
-
-    // 3. Coupon (server-side; same semantics as before: invalid coupons are ignored)
-    let discountAmount = 0;
-    let appliedCouponId: string | null = null;
-    let appliedCouponCode: string | null = null;
-    let couponUsageLimit: number | null = null;
-    if (couponCode && couponCode.trim()) {
-      const coupon = await prisma.coupon.findUnique({ where: { code: couponCode.trim().toUpperCase() } });
-      const now = new Date();
-      if (
-        coupon &&
-        coupon.isActive &&
-        cart.subtotal >= coupon.minOrderValue &&
-        (!coupon.startDate || coupon.startDate <= now) &&
-        (!coupon.expiryDate || coupon.expiryDate >= now) &&
-        (!coupon.usageLimit || coupon.usedCount < coupon.usageLimit)
-      ) {
-        discountAmount =
-          coupon.discountType === 'percentage' ? (cart.subtotal * coupon.discountValue) / 100 : coupon.discountValue;
-        discountAmount = money(Math.min(discountAmount, cart.subtotal));
-        appliedCouponId = coupon.id;
-        appliedCouponCode = coupon.code;
-        couponUsageLimit = coupon.usageLimit;
-      }
-    }
-
-    const finalTotal = money(Math.max(0, cart.subtotal - discountAmount + shippingFee + codFee));
+    const { settings } = comp;
+    const shippingFee = comp.shipping.fee;
+    const shippingMethodFinal = comp.shipping.method!;
+    const codFee = comp.codFee;
+    const discountAmount = comp.discountAmount;
+    const appliedCouponId = comp.appliedCoupon?.id ?? null;
+    const appliedCouponCode = comp.appliedCoupon?.code ?? null;
+    const couponUsageLimit = comp.appliedCoupon?.usageLimit ?? null;
+    const finalTotal = comp.total;
 
     if (clientTotal !== undefined && Math.abs(clientTotal - finalTotal) > 0.01) {
       return NextResponse.json(
@@ -177,7 +145,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const prefix = (settings?.orderPrefix || 'DX').replace(/[^A-Za-z0-9]/g, '').toUpperCase() || 'DX';
+    const now = new Date();
+    // Only unpaid prepaid orders hold stock on a timer. COD (and zero-total) orders keep stock.
+    const reservationExpiresAt = reservationExpiry(paymentMethod, finalTotal, now, settings.reservationMinutes);
+
+    const prefix = (settings.orderPrefix || 'DX').replace(/[^A-Za-z0-9]/g, '').toUpperCase() || 'DX';
     const orderNumber = `${prefix}-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90 + 10)}`;
 
     // 4. Transaction: create order, reserve stock (+ ledger), count coupon use
@@ -241,6 +213,8 @@ export async function POST(req: NextRequest) {
           discountAmount,
           shippingFee,
           codFee,
+          shippingMethod: shippingMethodFinal,
+          reservationExpiresAt,
           couponCode: appliedCouponCode,
           paymentMethod,
           paymentStatus: 'pending',
@@ -289,6 +263,12 @@ export async function POST(req: NextRequest) {
       orderId: createdOrder.id,
       orderNumber: createdOrder.orderNumber,
       totalAmount: finalTotal,
+      subtotal: comp.subtotal,
+      discountAmount,
+      shippingFee,
+      shippingMethod: shippingMethodFinal,
+      codFee,
+      reservationExpiresAt: reservationExpiresAt ? reservationExpiresAt.toISOString() : null,
       razorpayOrderId: razorpayOrder ? razorpayOrder.id : null,
       amount: razorpayOrder ? razorpayOrder.amount : Math.round(finalTotal * 100),
       currency: razorpayOrder ? razorpayOrder.currency : 'INR',

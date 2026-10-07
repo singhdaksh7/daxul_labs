@@ -5,6 +5,22 @@
  */
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
+import {
+  DEFAULT_COD_SETTINGS,
+  DEFAULT_SHIPPING_SETTINGS,
+  codEligibility,
+  computeTotal,
+  enabledMethods,
+  evaluateCoupon,
+  resolveShippingMethod,
+  round2 as roundMoney,
+  shippingCharge,
+  type CodSettings,
+  type CouponEvaluation,
+  type CouponLike,
+  type ShippingMethod,
+  type ShippingSettings,
+} from '@/lib/shipping';
 
 export class PricingError extends Error {
   status: number;
@@ -38,6 +54,13 @@ export interface StockPlan {
   variantIds: string[];
 }
 
+export interface LineStock {
+  ok: boolean;
+  /** units still available for this line's selection (null = untracked / unlimited) */
+  remaining: number | null;
+  message: string | null;
+}
+
 export interface PricedLine {
   productId: string;
   productName: string;
@@ -61,6 +84,7 @@ export interface PricedLine {
   prepaidOnly: boolean;
   codEnabled: boolean;
   stockPlan: StockPlan;
+  stock: LineStock;
 }
 
 export interface PricedCart {
@@ -187,16 +211,22 @@ function priceOne(product: DbProduct, input: PricingInput): PricedLine {
     customizationFee += (field.fee || 0) + adj;
   }
 
-  // ---- Stock: variant stock where set, otherwise product stock when tracked
+  // ---- Stock: variant stock where set, otherwise product stock when tracked.
+  // Never throws here: availability is reported on the line so quote and order share one code path.
   const trackedVariants = selectedVariants.filter((v) => v.stock !== null);
-  for (const v of trackedVariants) {
-    if ((v.stock as number) < quantity) {
-      throw new PricingError(`Insufficient stock for "${name}". Only ${Math.max(0, v.stock as number)} left for the selected option.`);
-    }
-  }
   const useProductStock = product.trackInventory && trackedVariants.length === 0;
-  if (useProductStock && product.stock < quantity) {
-    throw new PricingError(`Insufficient stock for "${name}". Only ${Math.max(0, product.stock)} left in stock.`);
+  let stock: LineStock = { ok: true, remaining: null, message: null };
+  const short = trackedVariants.find((v) => (v.stock as number) < quantity);
+  if (short) {
+    const left = Math.max(0, short.stock as number);
+    stock = { ok: false, remaining: left, message: `Insufficient stock for "${name}". Only ${left} left for the selected option.` };
+  } else if (useProductStock) {
+    const left = Math.max(0, product.stock);
+    stock = product.stock < quantity
+      ? { ok: false, remaining: left, message: `Insufficient stock for "${name}". Only ${left} left in stock.` }
+      : { ok: true, remaining: left, message: null };
+  } else if (trackedVariants.length) {
+    stock = { ok: true, remaining: Math.max(0, Math.min(...trackedVariants.map((v) => v.stock as number))), message: null };
   }
 
   const unitPrice = round2(product.price + variantAdjustment + customizationFee);
@@ -227,25 +257,53 @@ function priceOne(product: DbProduct, input: PricingInput): PricedLine {
       productId: useProductStock ? product.id : null,
       variantIds: trackedVariants.map((v) => v.id),
     },
+    stock,
   };
 }
 
-/** Price a whole cart from DB state. Throws PricingError (status 400) on any invalid line. */
-export async function priceCart(
+export interface LineIssue {
+  index: number;
+  message: string;
+}
+
+export interface PricedCartDetailed {
+  /** successfully priced lines, each tagged with its index in the request */
+  lines: Array<PricedLine & { index: number }>;
+  issues: LineIssue[];
+  subtotal: number;
+}
+
+/**
+ * Price a cart without throwing per-line problems: invalid lines are reported in `issues`
+ * (and omitted from `lines`); stock shortfalls (incl. combined quantities across lines of the
+ * same product/variant) are reported on `line.stock` and also appended to `issues`.
+ */
+export async function priceCartDetailed(
   inputs: PricingInput[],
   client: Pick<typeof prisma, 'product'> = prisma,
-): Promise<PricedCart> {
+): Promise<PricedCartDetailed> {
   if (!inputs.length) throw new PricingError('Order must contain at least one item.');
   const ids = Array.from(new Set(inputs.map((i) => i.productId)));
   const products = await client.product.findMany({ where: { id: { in: ids } }, include: productInclude });
   const map = new Map(products.map((p) => [p.id, p]));
 
-  const lines: PricedLine[] = [];
-  for (const input of inputs) {
+  const lines: Array<PricedLine & { index: number }> = [];
+  const issues: LineIssue[] = [];
+  inputs.forEach((input, index) => {
     const product = map.get(input.productId);
-    if (!product) throw new PricingError(`Product not found or no longer available: ${input.productId}`);
-    lines.push(priceOne(product, input));
-  }
+    if (!product) {
+      issues.push({ index, message: `Product not found or no longer available: ${input.productId}` });
+      return;
+    }
+    try {
+      const line = priceOne(product, input);
+      lines.push({ ...line, index });
+      if (!line.stock.ok && line.stock.message) issues.push({ index, message: line.stock.message });
+    } catch (e) {
+      if (e instanceof PricingError) issues.push({ index, message: e.message });
+      else throw e;
+    }
+  });
 
   // Combined-quantity stock check when the same product/variant appears on several lines
   const demandProduct = new Map<string, number>();
@@ -254,20 +312,232 @@ export async function priceCart(
     if (l.stockPlan.productId) demandProduct.set(l.productId, (demandProduct.get(l.productId) ?? 0) + l.quantity);
     for (const vid of l.stockPlan.variantIds) demandVariant.set(vid, (demandVariant.get(vid) ?? 0) + l.quantity);
   }
+  const flag = (l: PricedLine & { index: number }, remaining: number, message: string) => {
+    if (l.stock.ok) {
+      l.stock = { ok: false, remaining, message };
+      issues.push({ index: l.index, message });
+    }
+  };
   for (const [pid, qty] of demandProduct) {
     const p = map.get(pid)!;
-    if (p.stock < qty) throw new PricingError(`Insufficient stock for "${p.name}". Only ${Math.max(0, p.stock)} left in stock.`);
+    if (p.stock < qty) {
+      const left = Math.max(0, p.stock);
+      for (const l of lines) {
+        if (l.stockPlan.productId === pid) flag(l, left, `Insufficient stock for "${p.name}". Only ${left} left in stock.`);
+      }
+    }
   }
   for (const [vid, qty] of demandVariant) {
     for (const p of products) {
       for (const g of p.variantGroups) {
         const v = g.variants.find((x) => x.id === vid);
         if (v && v.stock !== null && v.stock < qty) {
-          throw new PricingError(`Insufficient stock for "${p.name}" (${v.name}). Only ${Math.max(0, v.stock)} left.`);
+          const left = Math.max(0, v.stock);
+          for (const l of lines) {
+            if (l.stockPlan.variantIds.includes(vid)) flag(l, left, `Insufficient stock for "${p.name}" (${v.name}). Only ${left} left.`);
+          }
         }
       }
     }
   }
 
-  return { lines, subtotal: round2(lines.reduce((s, l) => s + l.lineTotal, 0)) };
+  return { lines, issues, subtotal: round2(lines.reduce((s, l) => s + l.lineTotal, 0)) };
+}
+
+/** Strict variant: throws PricingError(400) on the first problem. */
+export async function priceCart(
+  inputs: PricingInput[],
+  client: Pick<typeof prisma, 'product'> = prisma,
+): Promise<PricedCart> {
+  const detailed = await priceCartDetailed(inputs, client);
+  if (detailed.issues.length) throw new PricingError(detailed.issues[0].message);
+  return { lines: detailed.lines, subtotal: detailed.subtotal };
+}
+
+// ---------------------------------------------------------------------------
+// Shared checkout computation: the ONE function behind /api/quote and create-order.
+// ---------------------------------------------------------------------------
+
+export interface CheckoutRequest {
+  items: PricingInput[];
+  couponCode?: string | null;
+  paymentMethod?: 'prepaid' | 'cod';
+  shippingMethod?: ShippingMethod | null;
+}
+
+export interface CheckoutIssue {
+  code: 'line' | 'stock' | 'coupon' | 'shipping' | 'cod';
+  message: string;
+  index?: number;
+}
+
+export interface CheckoutComputation {
+  paymentMethod: 'prepaid' | 'cod';
+  lines: Array<PricedLine & { index: number }>;
+  subtotal: number;
+  couponCode: string | null;
+  couponEvaluation: CouponEvaluation | null;
+  discountAmount: number;
+  appliedCoupon: CouponLike | null;
+  shipping: {
+    method: ShippingMethod | null;
+    fee: number;
+    freeApplied: boolean;
+    amountToFree: number;
+    options: Array<{ method: ShippingMethod; enabled: boolean; baseFee: number; fee: number }>;
+  };
+  cod: { eligible: boolean; reason: string | null; fee: number };
+  codFee: number;
+  total: number;
+  settings: {
+    shipping: ShippingSettings;
+    cod: CodSettings;
+    orderPrefix: string;
+    reservationMinutes: number;
+    currencySymbol: string;
+    currencyCode: string;
+  };
+  issues: CheckoutIssue[];
+}
+
+type SettingsRow = {
+  standardShippingEnabled: boolean;
+  expressShippingEnabled: boolean;
+  standardShippingFee: number;
+  expressShippingFee: number;
+  freeShippingThreshold: number;
+  globalCodEnabled: boolean;
+  customProductsPrepaidOnly: boolean;
+  codFeeEnabled: boolean;
+  codFee: number;
+  orderPrefix: string;
+  reservationMinutes: number;
+  currencySymbol: string;
+  currencyCode: string;
+} | null;
+
+export function settingsFromRow(row: SettingsRow) {
+  const shipping: ShippingSettings = row
+    ? {
+        standardEnabled: row.standardShippingEnabled,
+        expressEnabled: row.expressShippingEnabled,
+        standardFee: row.standardShippingFee,
+        expressFee: row.expressShippingFee,
+        freeThreshold: row.freeShippingThreshold,
+      }
+    : DEFAULT_SHIPPING_SETTINGS;
+  const cod: CodSettings = row
+    ? {
+        globalCodEnabled: row.globalCodEnabled,
+        customProductsPrepaidOnly: row.customProductsPrepaidOnly,
+        codFeeEnabled: row.codFeeEnabled,
+        codFee: row.codFee,
+      }
+    : DEFAULT_COD_SETTINGS;
+  return {
+    shipping,
+    cod,
+    orderPrefix: row?.orderPrefix || 'DX',
+    reservationMinutes: row?.reservationMinutes ?? 60,
+    currencySymbol: row?.currencySymbol ?? '₹',
+    currencyCode: row?.currencyCode ?? 'INR',
+  };
+}
+
+/**
+ * Computes prices, coupon, shipping, COD and total from database state. Never throws for
+ * business problems (they are listed in `issues`); callers decide: create-order rejects on any
+ * issue, /api/quote reports them. `now` is injectable for tests.
+ */
+export async function computeCheckout(
+  req: CheckoutRequest,
+  now: Date = new Date(),
+  client: Pick<typeof prisma, 'product' | 'siteSettings' | 'coupon'> = prisma,
+): Promise<CheckoutComputation> {
+  const paymentMethod = req.paymentMethod ?? 'prepaid';
+  const priced = await priceCartDetailed(req.items, client);
+  const issues: CheckoutIssue[] = priced.issues.map((i) => ({
+    code: /stock/i.test(i.message) ? 'stock' : 'line',
+    message: i.message,
+    index: i.index,
+  }));
+
+  const row = await client.siteSettings.findUnique({ where: { id: 'default' } });
+  const settings = settingsFromRow(row as SettingsRow);
+  const subtotal = priced.subtotal;
+
+  // Coupon (server-side). A supplied-but-unusable code is an issue so the customer is never
+  // silently charged a different total than the one they saw.
+  let couponEvaluation: CouponEvaluation | null = null;
+  let couponCode: string | null = null;
+  let discountAmount = 0;
+  let appliedCoupon: CouponLike | null = null;
+  const typed = req.couponCode?.trim();
+  if (typed) {
+    couponCode = typed.toUpperCase();
+    const coupon = await client.coupon.findUnique({ where: { code: couponCode } });
+    couponEvaluation = evaluateCoupon(coupon as CouponLike | null, subtotal, now);
+    if (couponEvaluation.valid) {
+      discountAmount = couponEvaluation.discountAmount;
+      appliedCoupon = couponEvaluation.coupon;
+      couponCode = couponEvaluation.coupon.code;
+    } else {
+      issues.push({ code: 'coupon', message: couponEvaluation.message });
+    }
+  }
+
+  // Shipping (threshold applies to subtotal AFTER discount; waives STANDARD only)
+  const afterDiscount = roundMoney(Math.max(0, subtotal - discountAmount));
+  const resolved = resolveShippingMethod(req.shippingMethod, settings.shipping);
+  let method: ShippingMethod | null = null;
+  let shippingFee = 0;
+  let freeApplied = false;
+  if (resolved.ok) {
+    method = resolved.method;
+    const c = shippingCharge(method, afterDiscount, settings.shipping);
+    shippingFee = c.fee;
+    freeApplied = c.freeApplied;
+  } else {
+    issues.push({ code: 'shipping', message: resolved.message });
+  }
+  const options = enabledMethods(settings.shipping).map((m) => {
+    const c = shippingCharge(m, afterDiscount, settings.shipping);
+    return { method: m, enabled: true, baseFee: c.baseFee, fee: c.fee };
+  });
+  const amountToFree =
+    method === 'STANDARD' && !freeApplied ? roundMoney(Math.max(0, settings.shipping.freeThreshold - afterDiscount)) : 0;
+
+  // COD
+  const cod = codEligibility(
+    priced.lines.map((l) => ({
+      productName: l.productName,
+      prepaidOnly: l.prepaidOnly,
+      codEnabled: l.codEnabled,
+      customizable: l.customizable,
+      hasCustomizations: !!l.customizations,
+    })),
+    settings.cod,
+  );
+  const codFee = paymentMethod === 'cod' ? cod.fee : 0;
+  if (paymentMethod === 'cod' && !cod.eligible) {
+    issues.push({ code: 'cod', message: cod.reason ?? 'Cash on delivery is not available for this order.' });
+  }
+
+  const total = computeTotal({ subtotal, discountAmount, shippingFee, codFee });
+
+  return {
+    paymentMethod,
+    lines: priced.lines,
+    subtotal,
+    couponCode,
+    couponEvaluation,
+    discountAmount,
+    appliedCoupon,
+    shipping: { method, fee: shippingFee, freeApplied, amountToFree, options },
+    cod,
+    codFee,
+    total,
+    settings,
+    issues,
+  };
 }
