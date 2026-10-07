@@ -32,13 +32,13 @@ export default function Hero({ section }: HeroProps) {
     "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?q=80&w=1000&auto=format&fit=crop";
 
   return (
-    <section className="relative bg-[#0B0B0C] text-white pt-8 sm:pt-14 pb-16 sm:pb-24 border-b border-[#242426] overflow-hidden">
+    <section className="relative bg-daxul-black text-white pt-8 sm:pt-14 pb-16 sm:pb-24 border-b border-daxul-graphite overflow-hidden">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10">
         
         {/* Top Industrial Micro Header */}
-        <div className="flex items-center justify-between pb-6 mb-8 border-b border-[#242426]/60 font-mono text-[10px] tracking-[0.25em] text-[#B9B9B4] uppercase">
+        <div className="flex items-center justify-between pb-6 mb-8 border-b border-daxul-graphite/60 font-mono text-[10px] tracking-[0.25em] text-daxul-gray uppercase">
           <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 bg-[#C8FF35]" />
+            <span className="w-1.5 h-1.5 bg-daxul-lime" />
             <span>{eyebrow}</span>
           </div>
           <div className="hidden sm:block">
@@ -66,7 +66,7 @@ export default function Hero({ section }: HeroProps) {
               </h1>
 
               {/* Supporting Line */}
-              <p className="text-sm sm:text-base text-[#B9B9B4] max-w-md font-normal leading-relaxed tracking-wide pt-2">
+              <p className="text-sm sm:text-base text-daxul-gray max-w-md font-normal leading-relaxed tracking-wide pt-2">
                 {supportingCopy}
               </p>
             </div>
@@ -76,7 +76,7 @@ export default function Hero({ section }: HeroProps) {
               <div className="flex flex-wrap items-center gap-4">
                 <Link
                   href={primaryCtaUrl}
-                  className="group inline-flex items-center gap-3 bg-white hover:bg-[#F3F0E9] text-[#0B0B0C] font-mono text-xs font-bold tracking-[0.2em] uppercase px-7 py-4 transition-all duration-200 border border-white"
+                  className="group inline-flex items-center gap-3 bg-white hover:bg-daxul-bone text-daxul-black font-mono text-xs font-bold tracking-[0.2em] uppercase px-7 py-4 transition-all duration-200 border border-white"
                 >
                   <span>{primaryCtaLabel}</span>
                   <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -84,14 +84,14 @@ export default function Hero({ section }: HeroProps) {
 
                 <Link
                   href={secondaryCtaUrl}
-                  className="inline-flex items-center gap-2 bg-transparent hover:bg-[#151515] text-white font-mono text-xs font-medium tracking-[0.2em] uppercase px-7 py-4 transition-all duration-200 border border-[#242426] hover:border-white"
+                  className="inline-flex items-center gap-2 bg-transparent hover:bg-daxul-dark text-white font-mono text-xs font-medium tracking-[0.2em] uppercase px-7 py-4 transition-all duration-200 border border-daxul-graphite hover:border-white"
                 >
                   <span>{secondaryCtaLabel}</span>
                 </Link>
               </div>
 
               {/* Minimalist Specs Footer */}
-              <div className="pt-6 border-t border-[#242426] grid grid-cols-3 gap-4 font-mono text-[10px] text-[#B9B9B4] uppercase tracking-widest">
+              <div className="pt-6 border-t border-daxul-graphite grid grid-cols-3 gap-4 font-mono text-[10px] text-daxul-gray uppercase tracking-widest">
                 <div>
                   <span className="block text-white font-semibold mb-0.5">PROCESS</span>
                   <span>Additive Precision</span>
@@ -111,7 +111,7 @@ export default function Hero({ section }: HeroProps) {
 
           {/* Right Column: ONE Large Cinematic Product Visual (6 Cols) */}
           <div className="lg:col-span-6 relative flex flex-col">
-            <div className="relative flex-1 w-full min-h-[380px] sm:min-h-[500px] lg:min-h-[560px] bg-[#151515] border border-[#242426] overflow-hidden group">
+            <div className="relative flex-1 w-full min-h-[380px] sm:min-h-[500px] lg:min-h-[560px] bg-daxul-dark border border-daxul-graphite overflow-hidden group">
               <CmsMediaDisplay
                 media={mediaConfig}
                 fallbackUrl={fallbackUrl}
@@ -120,12 +120,12 @@ export default function Hero({ section }: HeroProps) {
               />
 
               {/* Subtle gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0B0B0C] via-transparent to-transparent opacity-50 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-daxul-black via-transparent to-transparent opacity-50 pointer-events-none" />
 
               {/* Bottom Editorial Caption */}
               <div className="absolute bottom-6 left-6 right-6 flex items-end justify-between font-mono text-xs pointer-events-none">
-                <div className="bg-[#0B0B0C]/90 backdrop-blur-sm px-4 py-2.5 border border-[#242426]">
-                  <span className="text-[10px] text-[#B9B9B4] tracking-[0.25em] uppercase block">
+                <div className="bg-daxul-black/90 backdrop-blur-sm px-4 py-2.5 border border-daxul-graphite">
+                  <span className="text-[10px] text-daxul-gray tracking-[0.25em] uppercase block">
                     [ FLAGSHIP DISPLAY ]
                   </span>
                   <span className="font-sans text-sm font-semibold text-white tracking-wide">
@@ -133,7 +133,7 @@ export default function Hero({ section }: HeroProps) {
                   </span>
                 </div>
 
-                <div className="hidden sm:block bg-[#0B0B0C]/90 backdrop-blur-sm px-3.5 py-2 border border-[#242426] text-[10px] text-[#B9B9B4] tracking-widest uppercase">
+                <div className="hidden sm:block bg-daxul-black/90 backdrop-blur-sm px-3.5 py-2 border border-daxul-graphite text-[10px] text-daxul-gray tracking-widest uppercase">
                   SERIES 2026
                 </div>
               </div>

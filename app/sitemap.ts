@@ -1,35 +1,47 @@
 import { MetadataRoute } from 'next';
-import { INITIAL_PRODUCTS, INITIAL_COLLECTIONS } from '@/lib/initialData';
+import { getSiteSettings, getSitemapEntries, POLICY_SLUGS } from '@/lib/catalog';
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://daxullabs.com';
+export const dynamic = 'force-dynamic';
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://daxullabs.com').replace(/\/+$/, '');
+
+  const settings = await getSiteSettings();
+  if (!settings.searchIndexingEnabled) return [];
+
+  const { products, collections, policies } = await getSitemapEntries();
+  const now = new Date();
 
   const staticRoutes: MetadataRoute.Sitemap = [
-    { url: `${baseUrl}`, lastModified: new Date(), changeFrequency: 'daily', priority: 1.0 },
-    { url: `${baseUrl}/shop`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
-    { url: `${baseUrl}/collections`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
-    { url: `${baseUrl}/customize`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.9 },
-    { url: `${baseUrl}/lab`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
-    { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${baseUrl}/policies/shipping`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
-    { url: `${baseUrl}/policies/return`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
-    { url: `${baseUrl}/policies/privacy`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
-    { url: `${baseUrl}/policies/terms`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${baseUrl}`, lastModified: now, changeFrequency: 'daily', priority: 1.0 },
+    { url: `${baseUrl}/shop`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
+    { url: `${baseUrl}/collections`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${baseUrl}/customize`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${baseUrl}/lab`, lastModified: now, changeFrequency: 'weekly', priority: 0.7 },
+    { url: `${baseUrl}/about`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
   ];
 
-  const productRoutes: MetadataRoute.Sitemap = INITIAL_PRODUCTS.map((prod) => ({
-    url: `${baseUrl}/shop/${prod.slug}`,
-    lastModified: new Date(),
+  const policyDates = new Map(policies.map((p) => [p.slug, p.updatedAt]));
+  const policyRoutes: MetadataRoute.Sitemap = POLICY_SLUGS.map((slug) => ({
+    url: `${baseUrl}/policies/${slug}`,
+    lastModified: policyDates.get(slug) ?? now,
+    changeFrequency: 'monthly',
+    priority: 0.3,
+  }));
+
+  const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
+    url: `${baseUrl}/shop/${p.slug}`,
+    lastModified: p.updatedAt,
     changeFrequency: 'weekly',
     priority: 0.8,
   }));
 
-  const collectionRoutes: MetadataRoute.Sitemap = INITIAL_COLLECTIONS.map((col) => ({
-    url: `${baseUrl}/collections/${col.slug}`,
-    lastModified: new Date(),
+  const collectionRoutes: MetadataRoute.Sitemap = collections.map((c) => ({
+    url: `${baseUrl}/collections/${c.slug}`,
+    lastModified: c.updatedAt,
     changeFrequency: 'weekly',
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...productRoutes, ...collectionRoutes];
+  return [...staticRoutes, ...policyRoutes, ...productRoutes, ...collectionRoutes];
 }

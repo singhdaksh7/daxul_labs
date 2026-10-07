@@ -4,7 +4,7 @@ import React from "react";
 
 export default function BrandSection() {
   return (
-    <section id="about" className="bg-[#F3F0E9] text-[#0B0B0C] py-24 lg:py-36 border-b border-[#E5E0D5]">
+    <section id="about" className="bg-daxul-bone text-daxul-black py-24 lg:py-36 border-b border-[#E5E0D5]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
         
         <span className="text-xs font-bold tracking-[0.4em] uppercase text-[#666660] block">
@@ -25,15 +25,15 @@ export default function BrandSection() {
         {/* Brand Pillars */}
         <div className="pt-12 grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-4xl mx-auto text-left border-t border-[#D8D3C7]">
           <div>
-            <span className="text-xs font-mono font-bold text-[#0B0B0C] block mb-1">01 / DESIGN FIRST</span>
+            <span className="text-xs font-mono font-bold text-daxul-black block mb-1">01 / DESIGN FIRST</span>
             <p className="text-xs text-[#666660]">Form and lighting optics lead every decision before manufacturing begins.</p>
           </div>
           <div>
-            <span className="text-xs font-mono font-bold text-[#0B0B0C] block mb-1">02 / MODERN CRAFT</span>
+            <span className="text-xs font-mono font-bold text-daxul-black block mb-1">02 / MODERN CRAFT</span>
             <p className="text-xs text-[#666660]">Blending digital precision with hand-finished assembly and optical quality.</p>
           </div>
           <div>
-            <span className="text-xs font-mono font-bold text-[#0B0B0C] block mb-1">03 / PERSONAL INTENT</span>
+            <span className="text-xs font-mono font-bold text-daxul-black block mb-1">03 / PERSONAL INTENT</span>
             <p className="text-xs text-[#666660]">Objects tailored to turn your space, memories, and light into living art.</p>
           </div>
         </div>

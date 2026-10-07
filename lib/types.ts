@@ -1,4 +1,20 @@
-export type CustomFieldType = 'text' | 'textarea' | 'photo' | 'date' | 'color' | 'select';
+export type CustomFieldType =
+  | 'text'
+  | 'textarea'
+  | 'photo'
+  | 'image'
+  | 'file'
+  | 'date'
+  | 'color'
+  | 'select'
+  | 'radio';
+
+/** A priced choice for select/radio custom fields (from CustomField.choices). */
+export interface FieldChoice {
+  label: string;
+  value: string;
+  priceAdjustment: number;
+}
 
 export interface CustomFieldConfig {
   id: string;
@@ -9,6 +25,7 @@ export interface CustomFieldConfig {
   fee: number;
   placeholder?: string;
   helpText?: string;
+  choices?: FieldChoice[]; // select/radio: priced choices (derived from options when absent)
 }
 
 export interface BusinessCosts {
@@ -208,4 +225,107 @@ export interface CustomerReview {
   comment: string;
   date: string;
   verified: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Storefront (database-backed, customer-safe) shapes. These NEVER carry
+// businessCosts or any other internal data.
+// ---------------------------------------------------------------------------
+
+export interface StoreVariant {
+  id: string;
+  name: string;
+  sku?: string;
+  priceAdjustment: number;
+  inStock: boolean;
+}
+
+export interface StoreVariantGroup {
+  id: string;
+  name: string;
+  variants: StoreVariant[];
+}
+
+export interface StoreProduct extends Omit<Product, 'businessCosts'> {
+  subtitle?: string;
+  sku?: string;
+  customizable: boolean;
+  trackInventory: boolean;
+  inStock: boolean;
+  materials?: string;
+  dimensions?: string;
+  leadTimeText?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  ogImage?: string;
+  collectionId?: string;
+  collectionSlug?: string;
+  collectionName?: string;
+  variantGroups: StoreVariantGroup[];
+  updatedAt?: string;
+}
+
+export interface StoreCollection extends Collection {
+  heroMedia?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+  ogImage?: string;
+  productCount: number;
+}
+
+export interface StorePolicyDoc {
+  slug: string;
+  title: string;
+  content: string;
+  updatedAt?: string;
+}
+
+/** Public subset of SiteSettings that is safe to ship to the browser. */
+export interface PublicSiteSettings {
+  announcementBarText: string;
+  announcementBarEnabled: boolean;
+  brandName: string;
+  brandTagline: string;
+  brandDescription: string;
+  contactEmail: string;
+  contactPhone: string;
+  whatsAppNumber: string;
+  instagramUrl: string;
+  whatsAppUrl: string | null;
+  youtubeUrl: string | null;
+  facebookUrl: string | null;
+  footerText: string;
+  standardShippingFee: number;
+  expressShippingFee: number;
+  freeShippingThreshold: number;
+  codFee: number;
+  codFeeEnabled: boolean;
+  globalCodEnabled: boolean;
+  customProductsPrepaidOnly: boolean;
+  currencySymbol: string;
+  currencyCode: string;
+  supportHours: string | null;
+  seoTitle: string;
+  seoDescription: string;
+  defaultOgImage: string | null;
+  searchIndexingEnabled: boolean;
+  customizationStep1Title: string;
+  customizationStep1Desc: string;
+  customizationStep2Title: string;
+  customizationStep2Desc: string;
+  customizationStep3Title: string;
+  customizationStep3Desc: string;
+  customizationStep4Title: string;
+  customizationStep4Desc: string;
+}
+
+export type RadiusPreset = 'none' | 'sm' | 'md' | 'lg' | 'full';
+
+export interface StorefrontTheme {
+  carbonColor: string;
+  boneColor: string;
+  graphiteColor: string;
+  accentColor: string;
+  buttonRadius: RadiusPreset;
+  borderRadius: RadiusPreset;
 }
