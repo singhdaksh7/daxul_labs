@@ -60,17 +60,7 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Atomic Stock Decrement for each product in order (concurrency safe)
-      for (const item of order.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: {
-            stock: {
-              decrement: item.quantity,
-            },
-          },
-        });
-      }
+      // Stock is reserved (and ledgered) at order creation in create-order; no decrement here.
 
       // Record Order Status History
       await tx.orderStatusHistory.create({
