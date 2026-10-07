@@ -281,13 +281,28 @@ export default function AdminDashboardPage() {
             { id: "orders", label: "Orders & Manufacturing", icon: Printer, badge: countByStage("new") },
             { id: "products", label: "Products & Custom Fields", icon: Package },
             { id: "collections", label: "Collections", icon: Layers },
-            { id: "site_editor", label: "Site Editor & Layout", icon: Sliders },
+            { id: "site_editor", label: "Site Editor & CMS", icon: Sliders, isLink: true, href: "/admin/site-editor" },
             { id: "theme", label: "Theme & Brand Style", icon: Palette },
             { id: "store_settings", label: "Store Info & Policies", icon: Settings },
             { id: "coupons", label: "Promo Coupons", icon: Tag },
           ].map((tab) => {
             const IconComp = tab.icon;
             const isActive = activeTab === tab.id;
+            if (tab.isLink && tab.href) {
+              return (
+                <Link
+                  key={tab.id}
+                  href={tab.href}
+                  className="w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-white hover:bg-[#242426] transition-all"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <IconComp className="w-4 h-4 text-[#C8FF35]" />
+                    <span>{tab.label}</span>
+                  </div>
+                  <span className="text-[10px] font-mono text-[#C8FF35] bg-[#C8FF35]/10 px-2 py-0.5 rounded">CMS</span>
+                </Link>
+              );
+            }
             return (
               <button
                 key={tab.id}

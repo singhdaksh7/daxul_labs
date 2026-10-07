@@ -1,14 +1,20 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
 export interface UploadResult {
   filename: string;
   originalName: string;
   mimeType: string;
   size: number;
-  provider: 'local' | 's3' | 'minio';
+  provider: 'local' | 's3' | 'minio' | 'r2';
   url: string;
+}
+
+export interface StoredFile {
+  body: Buffer;
+  contentType?: string;
 }
 
 export interface StorageOptions {
@@ -20,7 +26,11 @@ const DEFAULT_ALLOWED_MIME_TYPES = [
   'image/jpeg',
   'image/png',
   'image/webp',
+  'image/avif',
+  'image/gif',
   'image/svg+xml',
+  'video/mp4',
+  'video/webm',
   'application/pdf',
 ];
 
@@ -29,7 +39,7 @@ const FORBIDDEN_EXTENSIONS = [
   '.jsp', '.asp', '.aspx', '.html', '.htm', '.xhtml', '.phtml', '.cgi', '.dll', '.so'
 ];
 
-const DEFAULT_MAX_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
+const DEFAULT_MAX_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB (Supports short videos)
 
 export abstract class StorageService {
   abstract uploadFile(
@@ -38,6 +48,12 @@ export abstract class StorageService {
     mimeType: string,
     options?: StorageOptions
   ): Promise<UploadResult>;
+
+  /**
+   * Reads a stored object by its generated filename. Returns null when it does not exist.
+   * Callers (app routes) are responsible for authorizing access before calling this.
+   */
+  abstract getFile(filename: string): Promise<StoredFile | null>;
 
   protected validateFile(
     buffer: Buffer,
@@ -161,12 +177,53 @@ export class LocalStorageService extends StorageService {
       url: `${this.publicUrlPrefix}/${filename}`,
     };
   }
+
+  async getFile(filename: string): Promise<StoredFile | null> {
+    // Strip any directory components to prevent path traversal
+    const filePath = path.join(this.storageDir, path.basename(filename));
+    try {
+      return { body: await fs.promises.readFile(filePath) };
+    } catch (err: any) {
+      if (err?.code === 'ENOENT') return null;
+      throw err;
+    }
+  }
 }
 
 /**
- * S3 / MinIO Storage Provider (Architecture Ready)
+ * S3-compatible Storage Provider (Cloudflare R2, MinIO, AWS S3)
  */
 export class S3StorageService extends StorageService {
+  private client: S3Client;
+  private bucket: string;
+  private publicUrlPrefix: string;
+  private providerName: 's3' | 'minio' | 'r2';
+
+  constructor(providerName: 's3' | 'minio' | 'r2' = 's3') {
+    super();
+    const bucket = process.env.S3_BUCKET_NAME;
+    const accessKeyId = process.env.S3_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.S3_SECRET_ACCESS_KEY;
+    const endpoint = process.env.S3_ENDPOINT;
+
+    if (!bucket || !accessKeyId || !secretAccessKey) {
+      throw new Error('S3 storage is not configured: S3_BUCKET_NAME, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are required.');
+    }
+    if (providerName !== 's3' && !endpoint) {
+      throw new Error(`${providerName.toUpperCase()} storage requires S3_ENDPOINT.`);
+    }
+
+    this.providerName = providerName;
+    this.bucket = bucket;
+    this.publicUrlPrefix = process.env.STORAGE_PUBLIC_URL_PREFIX || '/api/uploads/file';
+    this.client = new S3Client({
+      region: process.env.S3_REGION || 'auto',
+      endpoint: endpoint || undefined,
+      forcePathStyle: providerName !== 's3',
+      credentials: { accessKeyId, secretAccessKey },
+    });
+  }
+
   async uploadFile(
     buffer: Buffer,
     originalName: string,
@@ -175,25 +232,48 @@ export class S3StorageService extends StorageService {
   ): Promise<UploadResult> {
     this.validateFile(buffer, originalName, mimeType, options);
     const filename = this.generateRandomFilename(originalName);
-    
-    const s3Bucket = process.env.S3_BUCKET_NAME || 'daxul-uploads';
-    const s3Endpoint = process.env.S3_PUBLIC_URL || `https://${s3Bucket}.s3.amazonaws.com`;
+
+    await this.client.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: filename,
+        Body: buffer,
+        ContentType: mimeType,
+        ContentLength: buffer.length,
+      })
+    );
 
     return {
       filename,
       originalName,
       mimeType,
       size: buffer.length,
-      provider: 's3',
-      url: `${s3Endpoint}/${filename}`,
+      provider: this.providerName,
+      url: `${this.publicUrlPrefix}/${filename}`,
     };
+  }
+
+  async getFile(filename: string): Promise<StoredFile | null> {
+    try {
+      const res = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: path.basename(filename) })
+      );
+      if (!res.Body) return null;
+      return {
+        body: Buffer.from(await res.Body.transformToByteArray()),
+        contentType: res.ContentType,
+      };
+    } catch (err: any) {
+      if (err?.name === 'NoSuchKey' || err?.$metadata?.httpStatusCode === 404) return null;
+      throw err;
+    }
   }
 }
 
 export function getStorageService(): StorageService {
   const provider = (process.env.STORAGE_PROVIDER || 'local').toLowerCase();
   if (provider === 's3' || provider === 'minio' || provider === 'r2') {
-    return new S3StorageService();
+    return new S3StorageService(provider as any);
   }
   return new LocalStorageService();
 }

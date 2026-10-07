@@ -2,153 +2,74 @@
 
 import React from "react";
 import Link from "next/link";
-import { useStore } from "@/lib/storeContext";
-import { ArrowUpRight, MessageCircle, Mail, Phone, Shield, Cpu, Lock } from "lucide-react";
+import { useCms } from "@/lib/cmsContext";
 
 export default function Footer() {
-  const { siteSettings, collections } = useStore();
+  const { footer: cmsFooter } = useCms();
+
+  const wordmarkText = cmsFooter?.wordmarkText || "DAXUL LABS";
+  const tagline = cmsFooter?.tagline || "Objects made differently.";
+  const copyrightLine = cmsFooter?.copyrightLine || "© 2026 DAXUL LABS";
+  const madeInIndiaText = cmsFooter?.madeInIndiaText || "Made in India.";
+  const columns = cmsFooter?.columns || [];
 
   return (
-    <footer className="bg-[#070708] border-t border-[#242426] text-gray-400 pt-16 pb-12 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
+    <footer className="bg-[#0B0B0C] text-white border-t border-[#242426] pt-16 lg:pt-24 pb-12 mt-auto">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 space-y-16">
         
-        {/* Top Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
-          
-          {/* Brand Info */}
-          <div className="lg:col-span-2 space-y-4">
-            <Link href="/" className="inline-block">
-              <span className="font-extrabold text-2xl tracking-[0.2em] text-white">
-                {siteSettings.brandName.split(" ")[0]}
-                <span className="text-[#C8FF35]">{siteSettings.brandName.split(" ")[1] || "LABS"}</span>
-              </span>
-              <div className="text-[10px] tracking-[0.4em] text-[#B9B9B4] font-medium uppercase mt-0.5">
-                {siteSettings.brandTagline}
-              </div>
-            </Link>
-            
-            <p className="text-xs text-gray-400 leading-relaxed max-w-sm">
-              {siteSettings.brandDescription}
-            </p>
-
-            {/* Direct WhatsApp & Contact */}
-            <div className="pt-2 space-y-2">
-              <a
-                href={`https://wa.me/${siteSettings.whatsAppNumber.replace(/[^0-9]/g, '')}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-[#151515] border border-[#242426] hover:border-[#C8FF35] text-white hover:text-[#C8FF35] px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all"
-              >
-                <MessageCircle className="w-4 h-4 text-green-400" />
-                <span>Chat on WhatsApp ({siteSettings.whatsAppNumber})</span>
-              </a>
-              <div className="flex items-center gap-4 text-xs text-gray-400">
-                <span className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-[#C8FF35]" /> {siteSettings.contactEmail}</span>
-              </div>
+        {/* Large DAXUL LABS Wordmark & Tagline */}
+        <div className="border-b border-[#242426] pb-12">
+          <Link href="/" className="inline-block select-none group">
+            <h2 className="text-5xl sm:text-7xl lg:text-9xl font-black uppercase tracking-tighter text-white group-hover:text-white/80 transition-colors leading-none">
+              {wordmarkText}
+            </h2>
+            <div className="font-mono text-xs sm:text-sm tracking-[0.35em] text-[#B9B9B4] uppercase mt-3">
+              {tagline}
             </div>
-          </div>
-
-          {/* Quick Links */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-extrabold uppercase tracking-widest text-white">Explore Store</h4>
-            <ul className="space-y-2 text-xs">
-              <li>
-                <Link href="/shop" className="hover:text-[#C8FF35] transition-colors">
-                  All Objects & Drops
-                </Link>
-              </li>
-              <li>
-                <Link href="/collections" className="hover:text-[#C8FF35] transition-colors">
-                  Shop Collections
-                </Link>
-              </li>
-              <li>
-                <Link href="/customize" className="hover:text-[#C8FF35] transition-colors">
-                  Custom Studio Builder
-                </Link>
-              </li>
-              <li>
-                <Link href="/lab" className="hover:text-[#C8FF35] transition-colors">
-                  Inside The Lab (R&D)
-                </Link>
-              </li>
-              <li>
-                <Link href="/about" className="hover:text-[#C8FF35] transition-colors">
-                  About DAXUL LABS
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Collections list */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-extrabold uppercase tracking-widest text-white">Categories</h4>
-            <ul className="space-y-2 text-xs">
-              {collections.slice(0, 5).map((col) => (
-                <li key={col.id}>
-                  <Link href={`/collections/${col.slug}`} className="hover:text-[#C8FF35] transition-colors">
-                    {col.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Policy & Customer Care */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-extrabold uppercase tracking-widest text-white">Customer Care</h4>
-            <ul className="space-y-2 text-xs">
-              <li>
-                <Link href="/account" className="hover:text-[#C8FF35] transition-colors">
-                  My Account & Orders
-                </Link>
-              </li>
-              <li>
-                <Link href="/track" className="hover:text-[#C8FF35] transition-colors">
-                  Track Order Status
-                </Link>
-              </li>
-              <li>
-                <Link href="/policies/shipping" className="hover:text-[#C8FF35] transition-colors">
-                  Shipping Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/policies/return" className="hover:text-[#C8FF35] transition-colors">
-                  Return & Replacements
-                </Link>
-              </li>
-              <li>
-                <Link href="/policies/privacy" className="hover:text-[#C8FF35] transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/policies/terms" className="hover:text-[#C8FF35] transition-colors">
-                  Terms & Conditions
-                </Link>
-              </li>
-              <li>
-                <Link href="/policies/cancellation" className="hover:text-[#C8FF35] transition-colors">
-                  Cancellation Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/admin" className="text-[#C8FF35] hover:underline font-bold transition-colors">
-                  Admin Dashboard Login →
-                </Link>
-              </li>
-            </ul>
-          </div>
+          </Link>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="pt-8 border-t border-[#242426] flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-          <div>{siteSettings.footerText}</div>
-          <div className="flex items-center gap-6">
-            <span className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-[#C8FF35]" /> 256-bit Encrypted Checkout</span>
-            <span className="flex items-center gap-1.5"><Cpu className="w-3.5 h-3.5 text-[#C8FF35]" /> Additive Manufacturing</span>
-          </div>
+        {/* Dynamic 4-Column Navigation Layout */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 font-mono text-xs">
+          {columns.map((col) => (
+            <div key={col.id || col.heading} className="space-y-4">
+              <div className="text-[10px] tracking-[0.25em] text-[#B9B9B4] uppercase">
+                {col.heading}
+              </div>
+              <ul className="space-y-2.5 text-[#B9B9B4]">
+                {col.links.map((link) => {
+                  const isExternal = link.url.startsWith("http") || link.url.startsWith("mailto:");
+                  if (isExternal) {
+                    return (
+                      <li key={link.url + link.label}>
+                        <a
+                          href={link.url}
+                          target={link.url.startsWith("http") ? "_blank" : undefined}
+                          rel={link.url.startsWith("http") ? "noopener noreferrer" : undefined}
+                          className="hover:text-white transition-colors"
+                        >
+                          {link.label}
+                        </a>
+                      </li>
+                    );
+                  }
+                  return (
+                    <li key={link.url + link.label}>
+                      <Link href={link.url} className="hover:text-white transition-colors">
+                        {link.label}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        {/* Minimal Bottom Line */}
+        <div className="pt-8 border-t border-[#242426] flex flex-col sm:flex-row justify-between items-center gap-4 font-mono text-[10px] text-[#B9B9B4] uppercase tracking-widest">
+          <div>{copyrightLine}</div>
+          <div>{madeInIndiaText}</div>
         </div>
 
       </div>

@@ -1,0 +1,81 @@
+name: Deploy to VPS
+
+on:
+  workflow_dispatch:
+
+# Never run two deploys at once; let a running deploy finish.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Configure SSH
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -p "${VPS_PORT:-22}" -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_APP_PATH: ${{ secrets.VPS_APP_PATH }}
+        run: |
+          ssh -i ~/.ssh/deploy_key -p "${VPS_PORT:-22}" \
+            -o IdentitiesOnly=yes -o ServerAliveInterval=30 \
+            "$VPS_USER@$VPS_HOST" "bash -s" -- "$VPS_APP_PATH" <<'REMOTE'
+          set -euo pipefail
+          APP_PATH="$1"
+
+          # Always print container status at the end, pass or fail.
+          trap 'echo; echo "==> docker compose ps"; docker compose ps' EXIT
+
+          cd "$APP_PATH"
+
+          echo "==> Previous commit: $(git rev-parse --short HEAD)"
+          git pull --ff-only origin main
+          echo "==> Deploying commit: $(git rev-parse --short HEAD)"
+
+          # The VPS .env is read by docker compose and is never touched here.
+          echo "==> docker compose build"
+          docker compose build
+
+          echo "==> docker compose up -d"
+          docker compose up -d
+
+          echo "==> prisma migrate deploy"
+          docker compose exec -T app npx prisma migrate deploy
+
+          echo "==> Health check"
+          for i in $(seq 1 12); do
+            if docker compose exec -T app wget -qO- http://127.0.0.1:3000/api/health; then
+              echo
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i/12 failed, retrying in 5s..."
+            sleep 5
+          done
+
+          echo "Health check FAILED" >&2
+          docker compose logs --tail=100 app >&2 || true
+          exit 1
+          REMOTE
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

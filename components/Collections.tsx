@@ -1,116 +1,120 @@
 "use client";
 
-import React, { useRef } from "react";
+import React from "react";
 import Link from "next/link";
-import { useStore } from "@/lib/storeContext";
+import { useCms } from "@/lib/cmsContext";
+import CmsMediaDisplay from "./CmsMediaDisplay";
 import { HomepageSection } from "@/lib/types";
-import { ArrowRight, ChevronLeft, ChevronRight, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 
 interface CollectionsProps {
   section?: HomepageSection;
 }
 
 export default function Collections({ section }: CollectionsProps) {
-  const { collections } = useStore();
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { collections: cmsCol } = useCms();
 
-  const scroll = (direction: "left" | "right") => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = direction === "left" ? -340 : 340;
-      scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
-    }
-  };
-
-  const title = section?.title || "SHOP COLLECTIONS";
-  const subtitle = section?.subtitle || "CURATED CATEGORIES";
+  const title = cmsCol?.sectionHeading || section?.title || "COLLECTIONS";
+  const eyebrow = cmsCol?.eyebrow || section?.subtitle || "03 / CATALOG ARCHIVE";
+  const tiles = cmsCol?.tiles || [];
 
   return (
-    <section id="collections" className="bg-[#F3F0E9] text-[#0B0B0C] py-20 lg:py-28 transition-colors">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="collections" className="bg-[#F3F0E9] text-[#0B0B0C] py-20 lg:py-32 border-b border-[#0B0B0C]/15 transition-colors">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10">
         
-        {/* Section Top Header Bar */}
-        <div className="flex items-end justify-between mb-10 pb-6 border-b border-[#D8D3C7]">
+        {/* Editorial Section Top Header */}
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between pb-8 mb-12 border-b border-[#0B0B0C]/15">
           <div>
-            <span className="text-[11px] font-bold tracking-[0.3em] uppercase text-[#666660] block mb-1">
-              {subtitle}
-            </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight uppercase">
+            <div className="font-mono text-[10px] tracking-[0.25em] text-[#666660] uppercase mb-2">
+              [ {eyebrow} ]
+            </div>
+            <h2 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter uppercase leading-[0.88] text-[#0B0B0C]">
               {title}
             </h2>
           </div>
 
-          <div className="flex items-center gap-4">
-            {/* Scroll Nav Buttons for Desktop */}
-            <div className="hidden md:flex items-center gap-2">
-              <button
-                onClick={() => scroll("left")}
-                aria-label="Previous collections"
-                className="w-10 h-10 rounded-full border border-[#D8D3C7] bg-white/60 hover:bg-white text-[#0B0B0C] flex items-center justify-center transition-colors"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => scroll("right")}
-                aria-label="Next collections"
-                className="w-10 h-10 rounded-full border border-[#D8D3C7] bg-white/60 hover:bg-white text-[#0B0B0C] flex items-center justify-center transition-colors"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* View All Link */}
-            <Link
-              href="/collections"
-              className="inline-flex items-center gap-2 font-bold text-xs sm:text-sm uppercase tracking-wider text-[#0B0B0C] hover:text-[#555550] transition-colors"
-            >
-              <span>View all</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
+          <Link
+            href="/collections"
+            className="mt-6 sm:mt-0 inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-[#0B0B0C] hover:text-[#555550] transition-colors"
+          >
+            <span>VIEW FULL ARCHIVE</span>
+            <ArrowUpRight className="w-4 h-4" />
+          </Link>
         </div>
 
-        {/* Horizontal Collections Carousel */}
-        <div
-          ref={scrollContainerRef}
-          className="flex gap-6 overflow-x-auto hide-scrollbar snap-x snap-mandatory pb-6 pt-2"
-        >
-          {collections.map((item) => (
+        {/* Editorial Asymmetrical Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-10">
+          
+          {/* Top Items (6 Cols Each) */}
+          {tiles.slice(0, 2).map((item) => (
             <Link
-              key={item.id}
-              href={`/collections/${item.slug}`}
-              className="group flex-shrink-0 w-[270px] sm:w-[300px] lg:w-[320px] bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-[#E5E0D5] flex flex-col snap-start"
+              key={item.id || item.title}
+              href={item.destinationUrl || `/collections/${item.slug}`}
+              className="group md:col-span-6 border border-[#0B0B0C]/15 bg-[#EAE5DA]/50 hover:bg-[#EAE5DA] transition-colors p-6 sm:p-8 flex flex-col justify-between"
             >
-              {/* Card Image Container */}
-              <div className="relative aspect-square w-full bg-[#151515] overflow-hidden">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="w-full h-full object-cover object-center transform transition-transform duration-700 group-hover:scale-105"
-                />
-                {item.badge && (
-                  <span className="absolute top-3 left-3 bg-[#0B0B0C] text-[#C8FF35] text-[10px] font-mono uppercase tracking-wider px-2.5 py-1 rounded">
-                    {item.badge}
-                  </span>
-                )}
+              <div className="space-y-4 mb-6">
+                <div className="relative aspect-[16/10] w-full overflow-hidden bg-[#0B0B0C]/5 border border-[#0B0B0C]/10">
+                  <CmsMediaDisplay
+                    media={item.media}
+                    fallbackUrl={item.media?.url || "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?q=80&w=1000&auto=format&fit=crop"}
+                    fallbackAlt={item.title}
+                    className="w-full h-full object-cover object-center transform transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+                  />
+                </div>
               </div>
 
-              {/* Card Content Footer */}
-              <div className="p-5 bg-[#F3F0E9] group-hover:bg-[#EAE5DA] transition-colors flex items-center justify-between border-t border-[#E5E0D5]">
+              <div className="flex items-end justify-between pt-4 border-t border-[#0B0B0C]/15">
                 <div>
-                  <h3 className="text-lg font-extrabold uppercase tracking-wider text-[#0B0B0C] transition-colors">
-                    {item.name}
+                  <h3 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-[#0B0B0C] leading-none mb-2">
+                    {item.title}
                   </h3>
-                  <p className="text-xs text-[#555550] font-medium tracking-wide mt-0.5 line-clamp-1">
-                    {item.description}
+                  <p className="text-xs sm:text-sm text-[#555550] max-w-sm font-normal">
+                    {item.descriptor}
                   </p>
                 </div>
 
-                <div className="w-8 h-8 rounded-full bg-[#0B0B0C] text-white group-hover:bg-[#C8FF35] group-hover:text-[#0B0B0C] flex items-center justify-center transition-all duration-300 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 shrink-0">
-                  <ArrowUpRight className="w-4 h-4" />
+                <div className="w-10 h-10 border border-[#0B0B0C]/20 text-[#0B0B0C] group-hover:bg-[#0B0B0C] group-hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 ml-4">
+                  <ArrowUpRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                 </div>
               </div>
             </Link>
           ))}
+
+          {/* Remaining Items (4 Cols Each) */}
+          {tiles.slice(2).map((item) => (
+            <Link
+              key={item.id || item.title}
+              href={item.destinationUrl || `/collections/${item.slug}`}
+              className="group md:col-span-4 border border-[#0B0B0C]/15 bg-[#EAE5DA]/50 hover:bg-[#EAE5DA] transition-colors p-6 flex flex-col justify-between"
+            >
+              <div className="space-y-4 mb-6">
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#0B0B0C]/5 border border-[#0B0B0C]/10">
+                  <CmsMediaDisplay
+                    media={item.media}
+                    fallbackUrl={item.media?.url || "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=1000&auto=format&fit=crop"}
+                    fallbackAlt={item.title}
+                    className="w-full h-full object-cover object-center transform transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-end justify-between pt-4 border-t border-[#0B0B0C]/15">
+                <div>
+                  <h3 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-[#0B0B0C] leading-none mb-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-[#555550] font-normal line-clamp-2">
+                    {item.descriptor}
+                  </p>
+                </div>
+
+                <div className="w-9 h-9 border border-[#0B0B0C]/20 text-[#0B0B0C] group-hover:bg-[#0B0B0C] group-hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 ml-3">
+                  <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </div>
+              </div>
+            </Link>
+          ))}
+
         </div>
 
       </div>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { StoreProvider } from "@/lib/storeContext";
+import { CmsProvider } from "@/lib/cmsContext";
 import AdminFloatingBar from "@/components/AdminFloatingBar";
 import CartDrawer from "@/components/CartDrawer";
 
@@ -38,9 +39,11 @@ export default function RootLayout({
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} dark scroll-smooth`}>
       <body className="min-h-screen flex flex-col bg-[#0B0B0C] text-white selection:bg-[#C8FF35] selection:text-[#0B0B0C]">
         <StoreProvider>
-          {children}
-          <CartDrawer />
-          <AdminFloatingBar />
+          <CmsProvider>
+            {children}
+            <CartDrawer />
+            <AdminFloatingBar />
+          </CmsProvider>
         </StoreProvider>
       </body>
     </html>

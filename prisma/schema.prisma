@@ -208,9 +208,10 @@ model OrderStatusHistory {
   order     Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
-model HomepageSection {
+/// Legacy pre-CMS table, preserved for safety. Unused by the app; to be dropped in a later cleanup migration.
+model HomepageSectionLegacy {
   id               String   @id @default(cuid())
-  type             String   // hero, flagship, collections, customize, lab_spotlight, etc.
+  type             String
   title            String
   subtitle         String
   badgeText        String
@@ -223,6 +224,46 @@ model HomepageSection {
   secondaryMediaUrl String?
   isVisible        Boolean  @default(true)
   order            Int      @default(0)
+}
+
+model HomepageSection {
+  id               String   @id @default(cuid())
+  sectionKey       String   @unique
+  sectionType      String   // HEADER, HERO, FEATURED_PRODUCT, COLLECTIONS, CUSTOMIZATION, LAB, BUILDING_DAXUL, FOOTER
+  name             String
+  visible          Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  draftContent     Json
+  publishedContent Json
+  draftSettings    Json?
+  publishedSettings Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model MediaAsset {
+  id         String   @id @default(cuid())
+  type       String   // image, video
+  storageKey String   @unique
+  filename   String
+  mimeType   String
+  size       Int
+  width      Int?
+  height     Int?
+  duration   Float?
+  altText    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model CmsAuditLog {
+  id          String   @id @default(cuid())
+  adminUserId String?
+  adminEmail  String?
+  sectionKey  String?
+  action      String
+  details     Json?
+  createdAt   DateTime @default(now())
 }
 
 model ThemeSettings {
