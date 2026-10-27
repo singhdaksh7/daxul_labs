@@ -358,6 +358,11 @@ export async function createCmsPage(data: {
     throw new Error(`A page with slug "/${normSlug}" already exists`);
   }
 
+  // Clean up any stale redirect matching this new slug
+  await prisma.cmsRedirect.deleteMany({
+    where: { fromPath: `/${normSlug}` },
+  });
+
   return prisma.cmsPage.create({
     data: {
       title: data.title.trim(),
@@ -503,6 +508,13 @@ export async function deleteCmsPage(id: string) {
   const page = await prisma.cmsPage.findUnique({ where: { id } });
   if (!page) throw new Error('Page not found');
   if (page.isSystem) throw new Error('System pages cannot be deleted');
+
+  // Clean up any redirects originating from or pointing to this page
+  await prisma.cmsRedirect.deleteMany({
+    where: {
+      OR: [{ pageId: id }, { fromPath: `/${page.slug}` }, { toPath: `/${page.slug}` }],
+    },
+  });
 
   return prisma.cmsPage.delete({ where: { id } });
 }
