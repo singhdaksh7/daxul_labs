@@ -421,7 +421,8 @@ export default function ProductClient({
                 <div key={field.id} className="space-y-1.5">
                   <label className="text-xs font-semibold text-daxul-black flex justify-between">
                     <span>
-                      {field.label} {field.required && <span className="text-red-500">*</span>}
+                      <span>{field.label}</span>
+                      {field.required && <span className="text-red-500"> *</span>}
                     </span>
                     {field.fee > 0 && (
                       <span className="text-[10px] text-daxul-black font-mono">+{money(field.fee)}</span>

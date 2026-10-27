@@ -116,7 +116,7 @@ export default function CartDrawer() {
                     <div className="w-16 h-16 rounded-lg bg-[#EAE5DA] shrink-0" />
                   )}
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex justify-between items-start gap-2">
                       <h3 className="text-xs font-bold text-daxul-black uppercase truncate">
                         {item.name}
@@ -228,7 +228,7 @@ export default function CartDrawer() {
                 <span>{shownShipping === 0 ? "Free" : money(shownShipping)}</span>
               </div>
               <div className="flex justify-between text-sm font-bold text-daxul-black pt-2 border-t border-daxul-black/10">
-                <span>Total</span>
+                <span>Estimated Total</span>
                 <span>{money(shownTotal)}</span>
               </div>
             </div>
