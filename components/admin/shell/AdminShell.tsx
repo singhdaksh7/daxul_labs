@@ -15,6 +15,10 @@ import {
   Sparkles,
   Boxes,
   PenSquare,
+  FileText,
+  Compass,
+  Megaphone,
+  Inbox,
   Image as ImageIcon,
   ScrollText,
   Search,
@@ -52,6 +56,10 @@ const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "Content",
     items: [
+      { label: "Pages", href: "/admin/pages", icon: FileText },
+      { label: "Navigation", href: "/admin/navigation", icon: Compass },
+      { label: "Banners", href: "/admin/banners", icon: Megaphone },
+      { label: "Inquiries", href: "/admin/inquiries", icon: Inbox },
       { label: "Site Editor", href: "/admin/site-editor", icon: PenSquare },
       { label: "Media Library", href: "/admin/media", icon: ImageIcon },
       { label: "Policies", href: "/admin/policies", icon: ScrollText },

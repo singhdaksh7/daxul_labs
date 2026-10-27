@@ -7,7 +7,7 @@ import { SiteProvider } from "@/lib/siteContext";
 import { CmsProvider } from "@/lib/cmsContext";
 import AdminFloatingBar from "@/components/AdminFloatingBar";
 import CartDrawer from "@/components/CartDrawer";
-import { getProducts, getSiteSettings, getTheme } from "@/lib/catalog";
+import { getProducts, getSiteSettings, getTheme, getCatalog } from "@/lib/catalog";
 import type { RadiusPreset } from "@/lib/types";
 
 // Storefront data comes from PostgreSQL on every request (admin edits show up immediately).
@@ -67,9 +67,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [settings, theme, products] = await Promise.all([getSiteSettings(), getTheme(), getProducts()]);
+  const [settings, theme, { products, collections }] = await Promise.all([
+    getSiteSettings(),
+    getTheme(),
+    getCatalog(),
+  ]);
 
-  const searchIndex = products.slice(0, 300).map((p) => ({
+  const productItems = products.slice(0, 300).map((p: any) => ({
     id: p.id,
     slug: p.slug,
     name: p.name,
@@ -78,14 +82,25 @@ export default async function RootLayout({
     image: p.images[0] ?? "",
   }));
 
+  const collectionItems = (collections || []).map((c: any) => ({
+    id: c.id,
+    slug: `collections/${c.slug}`,
+    name: c.name,
+    category: "Collection",
+    price: 0,
+    image: c.image ?? "",
+  }));
+
+  const searchIndex = [...productItems, ...collectionItems];
+
   // Values are validated hex colours / enumerated radius presets from lib/catalog.ts.
   const themeVars = {
     "--daxul-black": theme.carbonColor,
     "--daxul-bone": theme.boneColor,
     "--daxul-graphite": theme.graphiteColor,
     "--daxul-lime": theme.accentColor,
-    ...(BUTTON_RADIUS[theme.buttonRadius] ? { "--daxul-button-radius": BUTTON_RADIUS[theme.buttonRadius] } : {}),
-    ...(CARD_RADIUS[theme.borderRadius] ? { "--daxul-card-radius": CARD_RADIUS[theme.borderRadius] } : {}),
+    ...(BUTTON_RADIUS[theme.buttonRadius as RadiusPreset] ? { "--daxul-button-radius": BUTTON_RADIUS[theme.buttonRadius as RadiusPreset] } : {}),
+    ...(CARD_RADIUS[theme.borderRadius as RadiusPreset] ? { "--daxul-card-radius": CARD_RADIUS[theme.borderRadius as RadiusPreset] } : {}),
   } as CSSProperties;
 
   return (

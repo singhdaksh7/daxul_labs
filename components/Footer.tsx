@@ -8,6 +8,18 @@ import { useSiteSettings } from "@/lib/siteContext";
 export default function Footer() {
   const { footer: cmsFooter } = useCms();
   const settings = useSiteSettings();
+  const [dynamicFooterLinks, setDynamicFooterLinks] = React.useState<any[] | null>(null);
+
+  React.useEffect(() => {
+    fetch("/api/navigation?handle=footer")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.menu?.items && data.menu.items.length > 0) {
+          setDynamicFooterLinks(data.menu.items.filter((i: any) => i.isActive));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const wordmarkText = cmsFooter?.wordmarkText || settings.brandName || "DAXUL LABS";
   const tagline = cmsFooter?.tagline || settings.brandTagline || "Objects made differently.";

@@ -332,6 +332,8 @@ model MediaAsset {
   height     Int?
   duration   Float?
   altText    String?
+  caption    String?
+  usageCount Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
@@ -474,3 +476,141 @@ model LoginAttempt {
   @@index([ipKey, createdAt])
   @@index([createdAt])
 }
+
+enum PageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model CmsPage {
+  id              String             @id @default(cuid())
+  title           String
+  slug            String             @unique
+  parentPageId    String?
+  parentPage      CmsPage?           @relation("PageHierarchy", fields: [parentPageId], references: [id], onDelete: SetNull)
+  childPages      CmsPage[]          @relation("PageHierarchy")
+  isSystem        Boolean            @default(false)
+  status          PageStatus         @default(DRAFT)
+  sortOrder       Int                @default(0)
+  seoTitle        String?
+  seoDescription  String?            @db.Text
+  ogImage         String?
+  canonicalUrl    String?
+  noIndex         Boolean            @default(false)
+  sections        PageSection[]
+  redirects       CmsRedirect[]
+  versionHistory  CmsVersionHistory[]
+  navigationItems NavigationItem[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([slug])
+  @@index([status])
+  @@index([sortOrder])
+}
+
+model PageSection {
+  id               String   @id @default(cuid())
+  pageId           String
+  page             CmsPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  type             String   // HERO, BANNER, TEXT, IMAGE_TEXT, PRODUCT_GRID, COLLECTION_GRID, FEATURED_PRODUCT, GALLERY, VIDEO, CTA, STATS, TABS, FAQ, TESTIMONIALS, CUSTOMIZATION, BRAND_STATEMENT, INSTAGRAM, NEWSLETTER, CONTACT, SPACER
+  name             String?
+  sortOrder        Int      @default(0)
+  visible          Boolean  @default(true)
+  draftContent     Json
+  publishedContent Json
+  settings         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([pageId, sortOrder])
+  @@index([pageId, visible])
+}
+
+model NavigationMenu {
+  id        String           @id @default(cuid())
+  handle    String           @unique // "header", "footer", "mobile"
+  name      String
+  items     NavigationItem[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+model NavigationItem {
+  id         String          @id @default(cuid())
+  menuId     String
+  menu       NavigationMenu  @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  parentId   String?
+  parent     NavigationItem? @relation("MenuHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children   NavigationItem[] @relation("MenuHierarchy")
+  label      String
+  url        String
+  pageId     String?
+  page       CmsPage?        @relation(fields: [pageId], references: [id], onDelete: SetNull)
+  openNewTab Boolean         @default(false)
+  sortOrder  Int             @default(0)
+  isActive   Boolean         @default(true)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  @@index([menuId, sortOrder])
+}
+
+model CmsRedirect {
+  id         String   @id @default(cuid())
+  fromPath   String   @unique
+  toPath     String
+  statusCode Int      @default(301)
+  pageId     String?
+  page       CmsPage? @relation(fields: [pageId], references: [id], onDelete: SetNull)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([fromPath])
+}
+
+model ContactInquiry {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  message   String   @db.Text
+  status    String   @default("NEW") // NEW, READ, RESPONDED, ARCHIVED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+}
+
+model Banner {
+  id          String    @id @default(cuid())
+  name        String
+  placement   String    @default("ANNOUNCEMENT") // ANNOUNCEMENT, HOMEPAGE_TOP, PROMO_BAR, PAGE_HERO
+  text        String
+  buttonText  String?
+  linkUrl     String?
+  desktopImage String?
+  mobileImage  String?
+  startDate   DateTime?
+  endDate     DateTime?
+  priority    Int       @default(0)
+  visible     Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([placement, visible, priority])
+}
+
+model CmsVersionHistory {
+  id         String   @id @default(cuid())
+  pageId     String
+  page       CmsPage  @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  adminEmail String
+  action     String   // PUBLISH, REVERT, DRAFT_SAVE
+  snapshot   Json
+  createdAt  DateTime @default(now())
+
+  @@index([pageId, createdAt])
+}
+

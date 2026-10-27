@@ -29,14 +29,40 @@ export default function Header() {
       )
     : [];
 
-  const defaultNavItems: { label: string; url: string; isLab?: boolean }[] = [
+  const defaultNavItems: { id?: string; label: string; url: string; isLab?: boolean; openNewTab?: boolean; children?: any[] }[] = [
     { label: "Shop", url: "/shop" },
     { label: "Collections", url: "/collections" },
     { label: "Customize", url: "/customize" },
     { label: "About", url: "/about" },
+    { label: "Lab", url: "/lab", isLab: true },
   ];
 
-  const navItems = header?.navItems && header.navItems.length > 0 ? header.navItems : defaultNavItems;
+  const [dynamicNavItems, setDynamicNavItems] = useState<typeof defaultNavItems | null>(null);
+
+  React.useEffect(() => {
+    fetch("/api/navigation?handle=header")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.menu?.items && data.menu.items.length > 0) {
+          const rootItems = data.menu.items
+            .filter((i: any) => !i.parentId && i.isActive)
+            .map((i: any) => ({
+              id: i.id,
+              label: i.label,
+              url: i.url,
+              openNewTab: i.openNewTab,
+              isLab: i.url === "/lab",
+              children: i.children?.filter((c: any) => c.isActive) || [],
+            }));
+          if (rootItems.length > 0) {
+            setDynamicNavItems(rootItems);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const navItems: any[] = dynamicNavItems || (header?.navItems && header.navItems.length > 0 ? header.navItems : defaultNavItems);
 
   const logoText = header?.logoText || siteSettings.brandName || "DAXUL LABS";
   const logoSubtext = header?.logoSubtext;
@@ -68,26 +94,49 @@ export default function Header() {
               </Link>
             </div>
 
-            {/* Center: Desktop Navigation Links */}
+            {/* Center: Desktop Navigation Links with Dropdown Support */}
             <nav className="hidden md:flex items-center space-x-8 text-xs uppercase tracking-[0.18em] font-medium text-daxul-black/70">
               {navItems.map((item) => {
                 const isActive = pathname === item.url || (item.url !== "/" && pathname.startsWith(item.url));
+                const hasChildren = item.children && item.children.length > 0;
                 return (
-                  <Link
-                    key={item.url + item.label}
-                    href={item.url}
-                    className={`relative py-1 transition-colors duration-150 hover:text-daxul-black flex items-center gap-1.5 ${
-                      isActive ? "text-daxul-black font-semibold" : ""
-                    }`}
-                  >
-                    <span>{item.label}</span>
-                    {item.isLab && header?.showStatusDot !== false && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-daxul-lime inline-block" />
+                  <div key={item.url + item.label} className="relative group py-1">
+                    <Link
+                      href={item.url}
+                      target={item.openNewTab ? "_blank" : undefined}
+                      rel={item.openNewTab ? "noopener noreferrer" : undefined}
+                      className={`relative py-1 transition-colors duration-150 hover:text-daxul-black flex items-center gap-1.5 ${
+                        isActive ? "text-daxul-black font-semibold" : ""
+                      }`}
+                    >
+                      <span>{item.label}</span>
+                      {item.isLab && header?.showStatusDot !== false && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-daxul-lime inline-block" />
+                      )}
+                      {isActive && (
+                        <span className="absolute -bottom-1 left-0 right-0 h-[1.5px] bg-daxul-black" />
+                      )}
+                    </Link>
+
+                    {/* Dropdown Menu */}
+                    {hasChildren && (
+                      <div className="absolute top-full left-0 hidden group-hover:block pt-2 z-50 animate-in fade-in-50 duration-150">
+                        <div className="bg-daxul-bone border border-daxul-black/10 shadow-lg py-2 min-w-[180px]">
+                          {item.children!.map((child: any) => (
+                            <Link
+                              key={child.id || child.url + child.label}
+                              href={child.url}
+                              target={child.openNewTab ? "_blank" : undefined}
+                              rel={child.openNewTab ? "noopener noreferrer" : undefined}
+                              className="block px-4 py-2 text-[11px] uppercase tracking-wider text-daxul-black/75 hover:text-daxul-black hover:bg-black/5 transition-colors"
+                            >
+                              {child.label}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
                     )}
-                    {isActive && (
-                      <span className="absolute -bottom-1 left-0 right-0 h-[1.5px] bg-daxul-black" />
-                    )}
-                  </Link>
+                  </div>
                 );
               })}
             </nav>
@@ -207,7 +256,7 @@ export default function Header() {
                 filteredSearchProducts.map((prod) => (
                   <Link
                     key={prod.id}
-                    href={`/shop/${prod.slug}`}
+                    href={prod.slug.startsWith("collections/") ? `/${prod.slug}` : `/shop/${prod.slug}`}
                     onClick={() => setSearchOpen(false)}
                     className="flex items-center gap-4 p-3 bg-white border border-daxul-black/10 hover:border-daxul-black transition-all daxul-card group"
                   >
@@ -228,9 +277,11 @@ export default function Header() {
                         {prod.name}
                       </h4>
                     </div>
-                    <div className="font-sans text-xs font-semibold text-daxul-black">
-                      {siteSettings.currencySymbol}{prod.price}
-                    </div>
+                    {prod.price > 0 && (
+                      <div className="font-sans text-xs font-semibold text-daxul-black">
+                        {siteSettings.currencySymbol}{prod.price}
+                      </div>
+                    )}
                   </Link>
                 ))
               )}

@@ -12,6 +12,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { products, collections, policies } = await getSitemapEntries();
   const now = new Date();
 
+  // Query published CMS pages that are indexable
+  let cmsPageRoutes: MetadataRoute.Sitemap = [];
+  try {
+    const { prisma } = await import('@/lib/db');
+    const pages = await prisma.cmsPage.findMany({
+      where: { status: 'PUBLISHED', noIndex: false },
+      select: { slug: true, updatedAt: true },
+    });
+    const builtInSlugs = new Set(['home', 'shop', 'collections', 'customize', 'lab', 'about']);
+    cmsPageRoutes = pages
+      .filter((p) => !builtInSlugs.has(p.slug))
+      .map((p) => ({
+        url: `${baseUrl}/${p.slug}`,
+        lastModified: p.updatedAt,
+        changeFrequency: 'weekly' as const,
+        priority: 0.7,
+      }));
+  } catch (e) {
+    // Graceful fallback if table is offline
+  }
+
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${baseUrl}`, lastModified: now, changeFrequency: 'daily', priority: 1.0 },
     { url: `${baseUrl}/shop`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
@@ -43,5 +64,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...policyRoutes, ...productRoutes, ...collectionRoutes];
+  return [...staticRoutes, ...cmsPageRoutes, ...policyRoutes, ...productRoutes, ...collectionRoutes];
 }

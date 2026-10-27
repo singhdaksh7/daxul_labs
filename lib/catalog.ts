@@ -409,6 +409,11 @@ export const getCollections = cache(async (): Promise<StoreCollection[]> =>
   }),
 );
 
+export const getCatalog = cache(async (): Promise<{ products: StoreProduct[]; collections: StoreCollection[] }> => {
+  const [products, collections] = await Promise.all([getProducts(), getCollections()]);
+  return { products, collections };
+});
+
 export const getCollectionWithProducts = cache(
   async (slug: string): Promise<{ collection: StoreCollection; products: StoreProduct[] } | null> =>
     safe('getCollectionWithProducts', null as { collection: StoreCollection; products: StoreProduct[] } | null, async () => {

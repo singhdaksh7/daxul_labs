@@ -1,13 +1,38 @@
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { getSiteSettings } from "@/lib/catalog";
+import { getSiteSettings, getCatalog } from "@/lib/catalog";
+import { getCmsPageBySlug } from "@/lib/cms/pageService";
+import CmsSectionRenderer from "@/components/cms/CmsSectionRenderer";
 import { ArrowRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function AboutPage() {
-  const siteSettings = await getSiteSettings();
+  const [siteSettings, cmsPage, { products, collections }] = await Promise.all([
+    getSiteSettings(),
+    getCmsPageBySlug("about"),
+    getCatalog(),
+  ]);
+
+  if (cmsPage && cmsPage.sections && cmsPage.sections.length > 0) {
+    return (
+      <div className="min-h-screen bg-daxul-bone text-daxul-black flex flex-col font-sans">
+        <Header />
+        <main className="flex-1">
+          {cmsPage.sections.map((section: any) => (
+            <CmsSectionRenderer
+              key={section.id}
+              section={section as any}
+              products={products}
+              collections={collections}
+            />
+          ))}
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-daxul-bone text-daxul-black flex flex-col font-sans">
