@@ -59,7 +59,7 @@ const CARD_RADIUS: Partial<Record<RadiusPreset, string>> = {
   none: "0px",
   sm: "0.25rem",
   lg: "1rem",
-  full: "1.5rem",
+  full: "9999px",
 };
 
 export default async function RootLayout({
@@ -92,9 +92,9 @@ export default async function RootLayout({
     <html
       lang="en"
       style={themeVars}
-      className={`${geistSans.variable} ${geistMono.variable} dark scroll-smooth`}
+      className={`${geistSans.variable} ${geistMono.variable} scroll-smooth`}
     >
-      <body className="min-h-screen flex flex-col bg-daxul-black text-white selection:bg-daxul-lime selection:text-daxul-black">
+      <body className="min-h-screen flex flex-col bg-daxul-bone text-daxul-black selection:bg-daxul-lime selection:text-daxul-black">
         <SiteProvider settings={settings} searchIndex={searchIndex}>
           <StoreProvider>
             <CmsProvider>

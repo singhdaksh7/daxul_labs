@@ -1,27 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  --daxul-black: #0B0B0C;
-  --daxul-dark: #151515;
-  --daxul-graphite: #242426;
   --daxul-bone: #F3F0E9;
+  --daxul-black: #0B0B0C;
+  --daxul-graphite: #242426;
   --daxul-gray: #B9B9B4;
   --daxul-lime: #C8FF35;
+  --daxul-dark: #151515;
 }
 
 @theme {
-  --color-daxul-black: var(--daxul-black);
-  --color-daxul-dark: var(--daxul-dark);
-  --color-daxul-graphite: var(--daxul-graphite);
   --color-daxul-bone: var(--daxul-bone);
+  --color-daxul-black: var(--daxul-black);
+  --color-daxul-graphite: var(--daxul-graphite);
   --color-daxul-gray: var(--daxul-gray);
   --color-daxul-lime: var(--daxul-lime);
+  --color-daxul-dark: var(--daxul-dark);
   --font-geist: var(--font-geist-sans), sans-serif;
 }
 
 body {
-  background-color: var(--daxul-black);
-  color: #FFFFFF;
+  background-color: var(--daxul-bone);
+  color: var(--daxul-black);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -36,23 +36,10 @@ body {
   scrollbar-width: none;
 }
 
-/* Subtle glow effects */
-.lime-glow {
-  box-shadow: 0 0 25px rgba(200, 255, 55, 0.25);
-}
-
-.hero-glow {
-  background: radial-gradient(circle at 75% 50%, rgba(200, 255, 55, 0.08) 0%, rgba(11, 11, 12, 0) 65%);
-}
-
-.beam-glow {
-  background: radial-gradient(ellipse at center, rgba(255, 230, 180, 0.15) 0%, rgba(11, 11, 12, 0) 70%);
-}
-
 /* Theme radius presets (set from ThemeSettings in app/layout.tsx). Fallbacks keep the default look. */
-.daxul-card { border-radius: var(--daxul-card-radius, 1rem); }
-.daxul-card-lg { border-radius: var(--daxul-card-radius, 1.5rem); }
-.daxul-card-sm { border-radius: var(--daxul-card-radius, 0.75rem); }
-.daxul-btn { border-radius: var(--daxul-button-radius, 0.75rem); }
-.daxul-btn-sm { border-radius: var(--daxul-button-radius, 0.5rem); }
+.daxul-card { border-radius: var(--daxul-card-radius, 0.5rem); }
+.daxul-card-lg { border-radius: var(--daxul-card-radius, 0.75rem); }
+.daxul-card-sm { border-radius: var(--daxul-card-radius, 0.25rem); }
+.daxul-btn { border-radius: var(--daxul-button-radius, 0.5rem); }
+.daxul-btn-sm { border-radius: var(--daxul-button-radius, 0.375rem); }
 .daxul-btn-pill { border-radius: var(--daxul-button-radius, 9999px); }

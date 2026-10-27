@@ -27,7 +27,6 @@ export default function AdminPoliciesPage() {
   useEffect(() => {
     const p = policies.find((x) => x.slug === active);
     setDraft(p ? { ...p } : null);
-    setNotice(null);
   }, [active, policies]);
 
   const save = async () => {
@@ -58,7 +57,10 @@ export default function AdminPoliciesPage() {
         {policies.map((p) => (
           <button
             key={p.slug}
-            onClick={() => setActive(p.slug)}
+            onClick={() => {
+              setActive(p.slug);
+              setNotice(null);
+            }}
             className={`px-3 py-1.5 rounded-lg font-mono text-xs uppercase ${active === p.slug ? "bg-[#C8FF35] text-[#0B0B0C] font-bold" : "bg-[#151515] text-[#B9B9B4] border border-[#242426]"}`}
           >
             {p.slug}

@@ -34,38 +34,46 @@ export default async function CollectionDetailPage({ params }: Params) {
   const { collection, products } = data;
 
   return (
-    <main className="min-h-screen bg-daxul-black flex flex-col font-sans text-white">
+    <main className="min-h-screen bg-daxul-bone text-daxul-black flex flex-col font-sans">
       <Header />
 
-      <section className="bg-daxul-dark border-b border-daxul-graphite py-16 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 text-center relative z-10">
+      <div className="flex-1 py-10 sm:py-16 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 w-full">
+        {/* Header: Back link, Title, Short description */}
+        <div className="pb-8 border-b border-daxul-black/10">
           <Link
             href="/collections"
-            className="inline-flex items-center gap-1 text-xs font-mono text-daxul-lime hover:underline uppercase mb-2"
+            className="inline-flex items-center gap-1 text-xs font-mono uppercase tracking-wider text-[#71717A] hover:text-daxul-black mb-4 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Collections
           </Link>
-          <h1 className="text-4xl sm:text-6xl font-black uppercase tracking-tight">{collection.name}</h1>
-          <p className="text-sm text-gray-400 max-w-xl mx-auto leading-relaxed">{collection.description}</p>
+          <h1 className="text-3xl sm:text-5xl font-bold uppercase tracking-tight text-daxul-black">
+            {collection.name}
+          </h1>
+          {collection.description && (
+            <p className="text-sm text-[#555550] max-w-xl leading-relaxed mt-2">
+              {collection.description}
+            </p>
+          )}
         </div>
-      </section>
 
-      <section className="flex-1 py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        {products.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
-            <p className="text-base font-bold uppercase">No objects currently listed in this collection.</p>
-            <Link href="/shop" className="text-daxul-lime text-xs font-bold uppercase underline mt-2 inline-block">
-              View All Shop Objects
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        )}
-      </section>
+        {/* Product Grid */}
+        <div className="py-10">
+          {products.length === 0 ? (
+            <div className="text-center py-20 text-[#71717A] space-y-3">
+              <p className="text-sm font-semibold uppercase text-daxul-black">No objects currently listed in this collection.</p>
+              <Link href="/shop" className="text-daxul-black underline text-xs font-semibold uppercase inline-block">
+                View All Shop Objects
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       <Footer />
     </main>

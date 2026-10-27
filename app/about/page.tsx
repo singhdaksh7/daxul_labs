@@ -2,7 +2,7 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { getSiteSettings } from "@/lib/catalog";
-import { ArrowRight, Sparkles, ShieldCheck, Cpu, Layers } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -10,62 +10,60 @@ export default async function AboutPage() {
   const siteSettings = await getSiteSettings();
 
   return (
-    <main className="min-h-screen bg-daxul-black flex flex-col font-sans text-white">
+    <main className="min-h-screen bg-daxul-bone text-daxul-black flex flex-col font-sans">
       <Header />
 
-      {/* Hero */}
-      <section className="bg-daxul-dark border-b border-daxul-graphite py-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 text-center">
-          <span className="text-xs font-mono uppercase tracking-[0.3em] text-daxul-lime">
-            BRAND MANIFESTO & CRAFTSMANSHIP
+      <section className="py-16 sm:py-24 border-b border-daxul-black/10">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6 text-center">
+          <span className="font-mono text-xs uppercase tracking-[0.3em] text-[#71717A] block">
+            About DAXUL LABS
           </span>
-          <h1 className="text-4xl sm:text-7xl font-black uppercase tracking-tight leading-none">
-            WE DON'T PRINT THINGS.<br />
-            WE BUILD OBJECTS WORTH KEEPING.
+          <h1 className="text-4xl sm:text-6xl font-bold uppercase tracking-tight text-daxul-black leading-tight">
+            Objects made differently.
           </h1>
-          <p className="text-sm sm:text-base text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg text-[#555550] max-w-2xl mx-auto leading-relaxed">
             {siteSettings.brandDescription}
           </p>
         </div>
       </section>
 
-      {/* Story Content */}
-      <section className="py-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
-        <div className="space-y-4 text-sm text-gray-300 leading-relaxed">
-          <h2 className="text-2xl font-black uppercase text-daxul-lime">The Philosophy of DAXUL LABS</h2>
+      <section className="py-16 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12 flex-1">
+        <div className="space-y-6 text-sm text-[#555550] leading-relaxed">
+          <h2 className="text-2xl font-bold uppercase tracking-tight text-daxul-black">
+            The Philosophy
+          </h2>
           <p>
-            DAXUL LABS was founded on a simple realization: standard mass manufacturing strips products of personal soul, while generic 3D printing services produce cheap plastic trinkets. We exist in the high-end space between.
+            DAXUL LABS is an independent 3D design studio in India. We combine algorithmic 3D optics, precision additive manufacturing, and organic bio-polymers to create lighting objects, personalized monoliths, devotional altars, and workspace decor.
           </p>
           <p>
-            By combining algorithmic 3D optics, precision multi-axis additive hardware, and organic bio-polymers, we craft physical monoliths, shadow projection lamps, and custom collectibles that feel like living art.
+            Every object is crafted on-demand with intention, balancing modern physical aesthetics with functional illumination. Designed and made in India.
           </p>
         </div>
 
-        {/* Pillars */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-6 border-t border-daxul-graphite">
-          <div className="bg-daxul-dark border border-daxul-graphite p-6 rounded-2xl space-y-2">
-            <span className="text-xs font-mono text-daxul-lime font-bold">01 / DESIGN FIRST</span>
-            <h3 className="text-sm font-bold text-white uppercase">Form Leads Function</h3>
-            <p className="text-xs text-gray-400">Optics and spatial geometry are calculated before a single layer of filament is laid.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-8 border-t border-daxul-black/10">
+          <div className="space-y-1.5">
+            <span className="font-mono text-xs font-bold text-daxul-black block">01 / DESIGN FIRST</span>
+            <h3 className="text-xs font-bold uppercase text-daxul-black">Form Leads Function</h3>
+            <p className="text-xs text-[#71717A]">Optics and spatial geometry are calculated before physical build.</p>
           </div>
 
-          <div className="bg-daxul-dark border border-daxul-graphite p-6 rounded-2xl space-y-2">
-            <span className="text-xs font-mono text-daxul-lime font-bold">02 / CRAFT & CODE</span>
-            <h3 className="text-sm font-bold text-white uppercase">Additive Precision</h3>
-            <p className="text-xs text-gray-400">Layer heights tuned to 0.12mm with hand-inspected electronic COB LED drivers.</p>
+          <div className="space-y-1.5">
+            <span className="font-mono text-xs font-bold text-daxul-black block">02 / ADDITIVE PRECISION</span>
+            <h3 className="text-xs font-bold uppercase text-daxul-black">Modern Craft</h3>
+            <p className="text-xs text-[#71717A]">Multi-axis precision builds hand-assembled with warm LED optics.</p>
           </div>
 
-          <div className="bg-daxul-dark border border-daxul-graphite p-6 rounded-2xl space-y-2">
-            <span className="text-xs font-mono text-daxul-lime font-bold">03 / ON-DEMAND</span>
-            <h3 className="text-sm font-bold text-white uppercase">Zero Overproduction</h3>
-            <p className="text-xs text-gray-400">Every single piece is manufactured specifically for you upon order placement.</p>
+          <div className="space-y-1.5">
+            <span className="font-mono text-xs font-bold text-daxul-black block">03 / ON-DEMAND</span>
+            <h3 className="text-xs font-bold uppercase text-daxul-black">Zero Overproduction</h3>
+            <p className="text-xs text-[#71717A]">Manufactured specifically for you upon order placement.</p>
           </div>
         </div>
 
-        <div className="text-center pt-8">
+        <div className="pt-6">
           <Link
             href="/shop"
-            className="inline-flex items-center gap-2 bg-daxul-lime text-daxul-black px-8 py-4 rounded-full text-xs font-extrabold uppercase tracking-wider hover:bg-white transition-colors"
+            className="inline-flex items-center gap-2 bg-daxul-lime hover:bg-[#bcf82a] text-daxul-black font-semibold px-7 py-3.5 rounded-lg text-xs uppercase tracking-widest border border-daxul-black transition-colors"
           >
             <span>Explore The Catalog</span>
             <ArrowRight className="w-4 h-4" />

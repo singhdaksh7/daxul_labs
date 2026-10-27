@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useCms } from "@/lib/cmsContext";
 import CmsMediaDisplay from "./CmsMediaDisplay";
 import { HomepageSection } from "@/lib/types";
-import { ArrowUpRight } from "lucide-react";
 
 interface CustomSectionProps {
   section?: HomepageSection;
@@ -14,92 +13,97 @@ interface CustomSectionProps {
 export default function CustomSection({ section }: CustomSectionProps) {
   const { customization: cmsCustom } = useCms();
 
-  const headline = cmsCustom?.headline || "MAKE IT YOURS.";
+  const label = "CUSTOM OBJECTS";
+  const headline = cmsCustom?.headline || "Make it yours.";
   const supportingCopy =
     cmsCustom?.supportingCopy ||
-    "Upload a photo, silhouette, logo or idea. We turn it into a physical object.";
+    "Upload a photo, name, silhouette or idea. We'll turn it into an object made for you.";
   const ctaLabel = cmsCustom?.ctaLabel || "START CUSTOMIZING";
   const ctaUrl = cmsCustom?.ctaUrl || "/customize";
-  const steps = cmsCustom?.steps || [];
+  
+  const defaultSteps = [
+    { num: "01", title: "Upload", desc: "Share a portrait, silhouette, or concept" },
+    { num: "02", title: "Customize", desc: "Select finish, light output, and base text" },
+    { num: "03", title: "Review", desc: "We convert your input into 3D geometry proof" },
+    { num: "04", title: "Order", desc: "Precision printed and hand-finished in India" },
+  ];
+
+  const steps =
+    cmsCustom?.steps && cmsCustom.steps.length > 0
+      ? cmsCustom.steps.map((s, idx) => ({
+          num: s.num || `0${idx + 1}`,
+          title: s.title,
+          desc: s.desc,
+        }))
+      : defaultSteps;
+
   const mediaConfig = cmsCustom?.media;
   const fallbackUrl =
     section?.mediaUrl ||
-    "https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?q=80&w=1000&auto=format&fit=crop";
+    "/images/custom_preview.jpg";
 
   return (
-    <section id="customize" className="bg-daxul-black text-white py-20 lg:py-32 border-b border-daxul-graphite">
+    <section id="custom-objects" className="bg-daxul-bone text-daxul-black py-16 sm:py-24 border-b border-daxul-black/10">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10">
-        
-        {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between pb-8 mb-12 border-b border-daxul-graphite">
-          <div>
-            <div className="font-mono text-[10px] tracking-[0.25em] text-daxul-gray uppercase mb-2 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-daxul-lime" />
-              <span>04 / BESPOKE STUDIO</span>
-            </div>
-            <h2 className="text-4xl sm:text-7xl lg:text-8xl font-black tracking-tighter uppercase leading-[0.88] text-white">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          
+          {/* Left Column: Large lifestyle / product image */}
+          <div className="relative w-full aspect-[4/3] sm:aspect-[16/11] lg:aspect-square bg-[#EAE5DA] border border-daxul-black/10 rounded-xl overflow-hidden order-2 lg:order-1">
+            <CmsMediaDisplay
+              media={mediaConfig}
+              fallbackUrl={fallbackUrl}
+              fallbackAlt="Custom Object Preview"
+              className="w-full h-full object-cover object-center"
+            />
+          </div>
+
+          {/* Right Column: Custom label, Heading, Copy, CTA, 4 Steps */}
+          <div className="flex flex-col justify-center space-y-6 order-1 lg:order-2">
+            <span className="font-mono text-xs uppercase tracking-[0.25em] text-[#71717A] block">
+              {label}
+            </span>
+
+            <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-daxul-black uppercase leading-tight">
               {headline}
             </h2>
-            <p className="text-sm sm:text-base text-daxul-gray max-w-xl font-normal leading-relaxed mt-3">
+
+            <p className="text-base sm:text-lg text-[#555550] leading-relaxed max-w-lg">
               {supportingCopy}
             </p>
-          </div>
 
-          <Link
-            href={ctaUrl}
-            className="mt-6 md:mt-0 inline-flex items-center gap-3 bg-white hover:bg-daxul-bone text-daxul-black font-mono text-xs font-bold uppercase tracking-[0.2em] px-7 py-4 transition-all border border-white shrink-0"
-          >
-            <span>{ctaLabel}</span>
-            <ArrowUpRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        {/* Editorial Layout: Dynamic Steps Flow + Large Visual */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
-          
-          {/* Editorial Vertical Dynamic Steps Flow (6 Cols) */}
-          <div className="lg:col-span-6 space-y-0 divide-y divide-daxul-graphite border-y border-daxul-graphite">
-            {steps.map((step) => (
-              <div
-                key={step.id || step.num + step.title}
-                className="py-5 sm:py-6 flex items-start justify-between gap-6 group hover:bg-daxul-dark/50 transition-colors px-2"
+            <div className="pt-1">
+              <Link
+                href={ctaUrl}
+                className="inline-flex items-center justify-center bg-daxul-lime hover:bg-[#bcf82a] text-daxul-black font-semibold text-xs tracking-[0.16em] uppercase px-7 py-4 border border-daxul-black transition-colors daxul-btn"
               >
-                <div className="flex items-start gap-5 sm:gap-8">
-                  <span className="font-mono text-xs font-bold text-daxul-lime tracking-widest pt-0.5">
-                    {step.num}
-                  </span>
-                  <div>
-                    <h3 className="text-xl font-bold text-white uppercase tracking-tight">
-                      {step.title}
-                    </h3>
-                    <p className="text-xs text-daxul-gray leading-relaxed font-normal mt-1 max-w-md">
-                      {step.desc}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* One Large Editorial Image Visual (6 Cols) */}
-          <div className="lg:col-span-6">
-            <div className="relative aspect-[4/3] w-full bg-daxul-dark border border-daxul-graphite overflow-hidden group">
-              <CmsMediaDisplay
-                media={mediaConfig}
-                fallbackUrl={fallbackUrl}
-                fallbackAlt="Custom Monolith Proof"
-                className="w-full h-full object-cover object-center transform transition-transform duration-700 ease-out group-hover:scale-[1.02]"
-              />
-              
-              <div className="absolute bottom-6 left-6 font-mono text-xs text-daxul-gray bg-daxul-black/90 backdrop-blur-sm px-4 py-2 border border-daxul-graphite">
-                <span className="block text-white font-semibold">CUSTOM MONOLITH PROOF</span>
-                <span className="text-[10px] text-daxul-gray tracking-wider uppercase">DUAL PERSPECTIVE VECTOR</span>
-              </div>
+                {ctaLabel}
+              </Link>
             </div>
+
+            {/* 4 Steps Below */}
+            <div className="grid grid-cols-2 gap-5 pt-6 border-t border-daxul-black/10">
+              {steps.map((st) => (
+                <div key={st.num + st.title} className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs font-bold text-daxul-black">
+                      {st.num}
+                    </span>
+                    <h3 className="text-sm font-bold uppercase tracking-tight text-daxul-black">
+                      {st.title}
+                    </h3>
+                  </div>
+                  {st.desc && (
+                    <p className="text-xs text-[#71717A] leading-relaxed">
+                      {st.desc}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+
           </div>
 
         </div>
-
       </div>
     </section>
   );

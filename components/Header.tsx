@@ -7,7 +7,7 @@ import { useCart } from "@/lib/storeContext";
 import { useSite } from "@/lib/siteContext";
 import { useCms } from "@/lib/cmsContext";
 import AnnouncementBar from "./AnnouncementBar";
-import { Search, User, ShoppingBag, Menu, X, ArrowUpRight } from "lucide-react";
+import { Search, User, ShoppingBag, Menu, X } from "lucide-react";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -29,92 +29,95 @@ export default function Header() {
       )
     : [];
 
-  const navItems = header?.navItems || [
+  const defaultNavItems: { label: string; url: string; isLab?: boolean }[] = [
     { label: "Shop", url: "/shop" },
     { label: "Collections", url: "/collections" },
     { label: "Customize", url: "/customize" },
-    { label: "Lab", url: "/lab", isLab: true },
     { label: "About", url: "/about" },
   ];
 
+  const navItems = header?.navItems && header.navItems.length > 0 ? header.navItems : defaultNavItems;
+
   const logoText = header?.logoText || siteSettings.brandName || "DAXUL LABS";
-  const logoSubtext = header?.logoSubtext || siteSettings.brandTagline || "MADE DIFFERENTLY";
+  const logoSubtext = header?.logoSubtext;
 
   return (
     <>
       <AnnouncementBar />
-      <header className="sticky top-0 z-40 bg-daxul-black/85 backdrop-blur-md border-b border-daxul-graphite transition-colors">
+      <header className="sticky top-0 z-40 bg-daxul-bone border-b border-daxul-black/10 transition-colors">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10">
           <div className="flex items-center justify-between h-16 sm:h-20">
             
             {/* Left: Brand Wordmark */}
-            <div className="flex items-center gap-10">
+            <div className="flex items-center">
               <Link href="/" className="group flex flex-col justify-center select-none">
                 {header?.logoImage ? (
                   <img src={header.logoImage} alt={logoText} className="h-6 sm:h-8 object-contain" />
                 ) : (
                   <>
-                    <span className="font-mono font-bold text-base sm:text-lg tracking-[0.22em] text-white group-hover:text-white/80 transition-colors uppercase">
+                    <span className="font-sans font-bold text-base sm:text-lg tracking-[0.22em] text-daxul-black group-hover:text-daxul-black/75 transition-colors uppercase">
                       {logoText}
                     </span>
-                    <span className="font-mono text-[9px] tracking-[0.35em] text-daxul-gray uppercase -mt-0.5">
-                      {logoSubtext}
-                    </span>
+                    {logoSubtext && (
+                      <span className="font-mono text-[9px] tracking-[0.3em] text-[#71717A] uppercase -mt-0.5">
+                        {logoSubtext}
+                      </span>
+                    )}
                   </>
                 )}
               </Link>
-
-              {/* Desktop Navigation Links */}
-              <nav className="hidden md:flex items-center space-x-7 text-[11px] uppercase tracking-[0.2em] font-medium text-daxul-gray">
-                {navItems.map((item) => {
-                  const isActive = pathname === item.url;
-                  return (
-                    <Link
-                      key={item.url + item.label}
-                      href={item.url}
-                      className={`relative py-1 transition-colors duration-200 hover:text-white flex items-center gap-1.5 ${
-                        isActive ? "text-white font-semibold" : ""
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                      {item.isLab && header?.showStatusDot !== false && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-daxul-lime inline-block" />
-                      )}
-                      {isActive && !item.isLab && (
-                        <span className="absolute bottom-0 left-0 right-0 h-[1px] bg-white" />
-                      )}
-                    </Link>
-                  );
-                })}
-              </nav>
             </div>
 
+            {/* Center: Desktop Navigation Links */}
+            <nav className="hidden md:flex items-center space-x-8 text-xs uppercase tracking-[0.18em] font-medium text-daxul-black/70">
+              {navItems.map((item) => {
+                const isActive = pathname === item.url || (item.url !== "/" && pathname.startsWith(item.url));
+                return (
+                  <Link
+                    key={item.url + item.label}
+                    href={item.url}
+                    className={`relative py-1 transition-colors duration-150 hover:text-daxul-black flex items-center gap-1.5 ${
+                      isActive ? "text-daxul-black font-semibold" : ""
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    {item.isLab && header?.showStatusDot !== false && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-daxul-lime inline-block" />
+                    )}
+                    {isActive && (
+                      <span className="absolute -bottom-1 left-0 right-0 h-[1.5px] bg-daxul-black" />
+                    )}
+                  </Link>
+                );
+              })}
+            </nav>
+
             {/* Right: Search, Account, Cart */}
-            <div className="flex items-center gap-3 sm:gap-5">
+            <div className="flex items-center gap-2 sm:gap-4">
               <button
                 onClick={() => setSearchOpen(true)}
                 aria-label="Search Catalog"
-                className="text-daxul-gray hover:text-white p-2 transition-colors focus:outline-none"
+                className="text-daxul-black/75 hover:text-daxul-black p-2 transition-colors focus:outline-none"
               >
-                <Search className="w-4 h-4 stroke-[1.5]" />
+                <Search className="w-4 h-4 stroke-[1.75]" />
               </button>
 
               <Link
                 href="/account"
                 aria-label="Account & Orders"
-                className="text-daxul-gray hover:text-white p-2 transition-colors focus:outline-none hidden sm:block"
+                className="text-daxul-black/75 hover:text-daxul-black p-2 transition-colors focus:outline-none hidden sm:block"
               >
-                <User className="w-4 h-4 stroke-[1.5]" />
+                <User className="w-4 h-4 stroke-[1.75]" />
               </Link>
 
               <button
                 onClick={() => setIsCartOpen(true)}
                 aria-label="View Cart"
-                className="text-daxul-gray hover:text-white p-2 transition-colors focus:outline-none relative"
+                className="text-daxul-black/75 hover:text-daxul-black p-2 transition-colors focus:outline-none relative flex items-center"
               >
-                <ShoppingBag className="w-4 h-4 stroke-[1.5]" />
+                <ShoppingBag className="w-4 h-4 stroke-[1.75]" />
                 {totalCartCount > 0 && (
-                  <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-daxul-lime text-daxul-black text-[9px] font-mono font-bold rounded-full flex items-center justify-center">
+                  <span className="ml-1.5 min-w-[18px] h-[18px] px-1 bg-daxul-lime text-daxul-black text-[10px] font-mono font-bold rounded-full flex items-center justify-center border border-daxul-black/20">
                     {totalCartCount}
                   </span>
                 )}
@@ -123,7 +126,7 @@ export default function Header() {
               {/* Mobile Menu Toggle */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden text-daxul-gray hover:text-white p-2 focus:outline-none"
+                className="md:hidden text-daxul-black p-2 focus:outline-none"
                 aria-label="Toggle Navigation"
               >
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -134,21 +137,21 @@ export default function Header() {
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-daxul-black border-b border-daxul-graphite px-6 py-8 space-y-6 animate-in slide-in-from-top-2 duration-200">
-            <nav className="flex flex-col space-y-5 text-sm font-medium uppercase tracking-[0.2em] text-daxul-gray">
+          <div className="md:hidden bg-daxul-bone border-b border-daxul-black/10 px-6 py-6 space-y-5 animate-in slide-in-from-top-2 duration-150">
+            <nav className="flex flex-col space-y-3.5 text-xs font-semibold uppercase tracking-[0.2em] text-daxul-black/80">
               {navItems.map((item) => (
                 <Link
                   key={item.url + item.label}
                   href={item.url}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`hover:text-white transition-colors pb-3 border-b border-daxul-graphite/60 flex items-center justify-between ${
-                    pathname === item.url ? "text-white font-bold" : ""
+                  className={`hover:text-daxul-black transition-colors py-2 border-b border-daxul-black/5 flex items-center justify-between ${
+                    pathname === item.url ? "text-daxul-black font-bold" : ""
                   }`}
                 >
                   <span>{item.label}</span>
                   {item.isLab && (
-                    <span className="text-[10px] font-mono text-daxul-lime border border-daxul-lime/30 px-2 py-0.5">
-                      LAB 0.1
+                    <span className="text-[10px] font-mono text-daxul-black bg-daxul-lime px-2 py-0.5 rounded">
+                      LAB
                     </span>
                   )}
                 </Link>
@@ -156,59 +159,49 @@ export default function Header() {
               <Link
                 href="/account"
                 onClick={() => setMobileMenuOpen(false)}
-                className="hover:text-white transition-colors pb-3 border-b border-daxul-graphite/60"
+                className="hover:text-daxul-black transition-colors py-2 border-b border-daxul-black/5"
               >
                 Account & Orders
               </Link>
             </nav>
-
-            <div className="pt-2">
-              <Link
-                href={header?.ctaUrl || "/shop"}
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full flex items-center justify-center gap-2 bg-white text-daxul-black font-mono text-xs uppercase tracking-[0.2em] py-3.5 transition-colors hover:bg-daxul-bone"
-              >
-                <span>{header?.ctaLabel || "Explore Catalog"}</span>
-                <ArrowUpRight className="w-4 h-4" />
-              </Link>
-            </div>
           </div>
         )}
       </header>
 
       {/* Global Quick Search Overlay Modal */}
       {searchOpen && (
-        <div className="fixed inset-0 z-[100] bg-daxul-black/95 backdrop-blur-md flex flex-col p-4 sm:p-8 animate-in fade-in duration-150">
-          <div className="max-w-3xl w-full mx-auto space-y-6 pt-4 sm:pt-8">
-            <div className="flex justify-between items-center border-b border-daxul-graphite pb-4">
-              <span className="font-mono text-xs uppercase tracking-[0.25em] text-daxul-gray">
-                [ SEARCH CATALOG ]
+        <div className="fixed inset-0 z-[100] bg-daxul-black/40 backdrop-blur-sm flex flex-col p-4 sm:p-8 animate-in fade-in duration-150">
+          <div className="max-w-2xl w-full mx-auto bg-daxul-bone border border-daxul-black/20 p-6 sm:p-8 space-y-6 mt-8 sm:mt-16 daxul-card shadow-2xl">
+            <div className="flex justify-between items-center border-b border-daxul-black/10 pb-4">
+              <span className="font-mono text-xs uppercase tracking-[0.25em] text-[#71717A]">
+                Search Catalog
               </span>
               <button
                 onClick={() => setSearchOpen(false)}
-                className="p-2 text-daxul-gray hover:text-white transition-colors"
+                className="p-1 text-daxul-black/60 hover:text-daxul-black transition-colors"
+                aria-label="Close search"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="relative">
-              <Search className="w-5 h-5 absolute left-4 top-4 text-daxul-gray" />
+              <Search className="w-4 h-4 absolute left-4 top-3.5 text-[#71717A]" />
               <input
                 type="text"
                 autoFocus
-                placeholder="Search shadow lamps, custom monoliths, desk objects..."
+                placeholder="Search shadow lamps, custom objects, altars..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-daxul-dark border border-daxul-graphite focus:border-white pl-12 pr-4 py-4 text-white text-sm tracking-wide placeholder:text-daxul-gray/50 focus:outline-none font-sans"
+                className="w-full bg-white border border-daxul-black/15 focus:border-daxul-black rounded-lg pl-11 pr-4 py-3 text-daxul-black text-sm tracking-wide placeholder:text-[#71717A]/60 focus:outline-none font-sans"
               />
             </div>
 
             {/* Search Results */}
-            <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-2">
+            <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
               {searchQuery && filteredSearchProducts.length === 0 ? (
-                <div className="text-center py-12 text-daxul-gray text-xs font-mono uppercase tracking-widest">
-                  No objects found matching "{searchQuery}"
+                <div className="text-center py-10 text-[#71717A] text-xs font-mono uppercase tracking-widest">
+                  No objects found matching &ldquo;{searchQuery}&rdquo;
                 </div>
               ) : (
                 filteredSearchProducts.map((prod) => (
@@ -216,22 +209,26 @@ export default function Header() {
                     key={prod.id}
                     href={`/shop/${prod.slug}`}
                     onClick={() => setSearchOpen(false)}
-                    className="flex items-center gap-4 p-3 bg-daxul-dark border border-daxul-graphite hover:border-white transition-all group"
+                    className="flex items-center gap-4 p-3 bg-white border border-daxul-black/10 hover:border-daxul-black transition-all daxul-card group"
                   >
-                    <img
-                      src={prod.image}
-                      alt={prod.name}
-                      className="w-14 h-14 object-cover bg-daxul-black"
-                    />
+                    {prod.image ? (
+                      <img
+                        src={prod.image}
+                        alt={prod.name}
+                        className="w-12 h-12 object-cover rounded bg-[#EBE7DF]"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 rounded bg-[#EBE7DF]" />
+                    )}
                     <div className="flex-1">
-                      <div className="font-mono text-[10px] text-daxul-gray uppercase tracking-widest">
+                      <div className="font-mono text-[10px] text-[#71717A] uppercase tracking-wider">
                         {prod.category}
                       </div>
-                      <h4 className="text-sm font-medium text-white group-hover:text-daxul-lime transition-colors">
+                      <h4 className="text-sm font-semibold text-daxul-black group-hover:underline">
                         {prod.name}
                       </h4>
                     </div>
-                    <div className="font-mono text-xs text-white">
+                    <div className="font-sans text-xs font-semibold text-daxul-black">
                       {siteSettings.currencySymbol}{prod.price}
                     </div>
                   </Link>

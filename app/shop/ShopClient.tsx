@@ -41,116 +41,103 @@ export default function ShopClient({ products, collections }: Props) {
   }, [products, collections, selectedCollection, searchQuery, sortBy]);
 
   return (
-    <>
-      {/* Hero Header */}
-      <section className="bg-daxul-dark border-b border-daxul-graphite py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 text-center">
-          <span className="text-xs font-mono uppercase tracking-[0.3em] text-daxul-lime">
-            CATALOG DISPATCH — ON-DEMAND PRODUCTION
-          </span>
-          <h1 className="text-4xl sm:text-6xl font-black uppercase tracking-tight">ALL OBJECTS & DROPS</h1>
-          <p className="text-sm text-gray-400 max-w-xl mx-auto leading-relaxed">
-            Every object is crafted on-demand using multi-axis FDM and resin SLA additive manufacturing. Select an
-            object to customize or order directly.
-          </p>
-        </div>
-      </section>
+    <div className="flex-1 py-10 sm:py-16 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 w-full">
+      {/* Simple Header */}
+      <div className="pb-8 border-b border-daxul-black/10">
+        <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-daxul-black uppercase">
+          Shop
+        </h1>
+      </div>
 
       {products.length === 0 ? (
-        <section className="flex-1 py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="text-center space-y-3 text-gray-400">
-            <p className="text-lg font-bold uppercase text-gray-200">New objects are being prepared.</p>
-            <p className="text-sm">The catalog is being updated. Please check back soon.</p>
-            <Link href="/" className="text-daxul-lime underline text-xs font-bold uppercase inline-block pt-2">
-              Back to Home
-            </Link>
-          </div>
-        </section>
+        <div className="py-24 text-center space-y-3 text-[#71717A]">
+          <p className="text-base font-semibold uppercase text-daxul-black">New objects are being prepared.</p>
+          <p className="text-sm">Please check back soon.</p>
+          <Link href="/" className="text-daxul-black underline text-xs font-semibold uppercase inline-block pt-2">
+            Back to Home
+          </Link>
+        </div>
       ) : (
         <>
-          {/* Filter & Search Bar */}
-          <section className="py-8 bg-daxul-black border-b border-daxul-graphite sticky top-20 z-30 backdrop-blur-md bg-daxul-black/90">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
-              <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                {/* Collection Pills */}
-                <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full md:w-auto pb-2 md:pb-0">
-                  <button
-                    onClick={() => setSelectedCollection("all")}
-                    className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
-                      selectedCollection === "all"
-                        ? "bg-daxul-lime text-daxul-black"
-                        : "bg-daxul-dark text-gray-400 border border-daxul-graphite hover:text-white"
-                    }`}
-                  >
-                    All ({products.length})
-                  </button>
-                  {collections.map((col) => (
-                    <button
-                      key={col.id}
-                      onClick={() => setSelectedCollection(col.slug)}
-                      className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
-                        selectedCollection === col.slug
-                          ? "bg-daxul-lime text-daxul-black"
-                          : "bg-daxul-dark text-gray-400 border border-daxul-graphite hover:text-white"
-                      }`}
-                    >
-                      {col.name}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Search & Sort */}
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                  <div className="relative flex-1 md:w-64">
-                    <Search className="w-4 h-4 absolute left-3 top-3 text-gray-500" />
-                    <input
-                      type="text"
-                      placeholder="SEARCH CATALOG..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-daxul-dark border border-daxul-graphite focus:border-daxul-lime rounded-xl pl-9 pr-3 py-2 text-xs text-white uppercase placeholder:text-gray-600 focus:outline-none"
-                    />
-                  </div>
-
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                    className="bg-daxul-dark border border-daxul-graphite focus:border-daxul-lime text-white text-xs font-semibold uppercase px-3 py-2 rounded-xl focus:outline-none"
-                  >
-                    <option value="featured">Featured</option>
-                    <option value="price-asc">Price: Low to High</option>
-                    <option value="price-desc">Price: High to Low</option>
-                  </select>
-                </div>
-              </div>
+          {/* Filters, Search & Sort Bar */}
+          <div className="py-6 border-b border-daxul-black/10 flex flex-col md:flex-row gap-4 items-center justify-between">
+            {/* Category / Collection Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full md:w-auto pb-1 md:pb-0">
+              <button
+                onClick={() => setSelectedCollection("all")}
+                className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap border ${
+                  selectedCollection === "all"
+                    ? "bg-daxul-black text-daxul-bone border-daxul-black"
+                    : "bg-transparent text-daxul-black/70 border-daxul-black/15 hover:border-daxul-black"
+                }`}
+              >
+                All ({products.length})
+              </button>
+              {collections.map((col) => (
+                <button
+                  key={col.id}
+                  onClick={() => setSelectedCollection(col.slug)}
+                  className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap border ${
+                    selectedCollection === col.slug
+                      ? "bg-daxul-black text-daxul-bone border-daxul-black"
+                      : "bg-transparent text-daxul-black/70 border-daxul-black/15 hover:border-daxul-black"
+                  }`}
+                >
+                  {col.name}
+                </button>
+              ))}
             </div>
-          </section>
 
-          {/* Product Grid */}
-          <section className="flex-1 py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+            {/* Search Input & Sort Dropdown */}
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="relative flex-1 md:w-64">
+                <Search className="w-3.5 h-3.5 absolute left-3.5 top-3 text-[#71717A]" />
+                <input
+                  type="text"
+                  placeholder="SEARCH CATALOG..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-white border border-daxul-black/15 focus:border-daxul-black rounded-lg pl-9 pr-3 py-2 text-xs text-daxul-black uppercase placeholder:text-[#71717A]/60 focus:outline-none"
+                />
+              </div>
+
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                className="bg-white border border-daxul-black/15 focus:border-daxul-black text-daxul-black text-xs font-semibold uppercase px-3 py-2 rounded-lg focus:outline-none cursor-pointer"
+              >
+                <option value="featured">Featured</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Product Grid (4 columns desktop, 2 columns mobile) */}
+          <div className="py-10">
             {filtered.length === 0 ? (
-              <div className="text-center py-20 text-gray-400 space-y-3">
-                <p className="text-lg font-bold uppercase">No objects found matching your filter.</p>
+              <div className="text-center py-20 text-[#71717A] space-y-3">
+                <p className="text-sm font-semibold uppercase text-daxul-black">No objects found matching your filter.</p>
                 <button
                   onClick={() => {
                     setSelectedCollection("all");
                     setSearchQuery("");
                   }}
-                  className="text-daxul-lime underline text-xs font-bold uppercase"
+                  className="text-daxul-black underline text-xs font-semibold uppercase"
                 >
                   Reset Filters
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
                 {filtered.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
             )}
-          </section>
+          </div>
         </>
       )}
-    </>
+    </div>
   );
 }

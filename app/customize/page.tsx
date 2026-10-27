@@ -17,11 +17,6 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-/**
- * Personalization is configured on each product page, where the server-defined
- * custom fields (text, uploads, dates, choices) and their fees live. This page
- * lists the customizable objects and explains the process.
- */
 export default async function CustomizePage() {
   const [products, s] = await Promise.all([getProducts(), getSiteSettings()]);
   const customizable = products.filter((p) => p.customizable);
@@ -34,68 +29,75 @@ export default async function CustomizePage() {
   ];
 
   return (
-    <main className="min-h-screen bg-daxul-black flex flex-col font-sans text-white">
+    <main className="min-h-screen bg-daxul-bone text-daxul-black flex flex-col font-sans">
       <Header />
 
-      <section className="bg-daxul-dark border-b border-daxul-graphite py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 text-center">
-          <span className="text-xs font-mono uppercase tracking-[0.3em] text-daxul-lime">BESPOKE ADDITIVE STUDIO</span>
-          <h1 className="text-4xl sm:text-6xl font-black uppercase tracking-tight">Customize Your Object.</h1>
-          <p className="text-sm text-gray-400 max-w-xl mx-auto leading-relaxed">
-            Turn your personal photos, couple portraits, vector logos, and sketches into 3D light-refracting projection
-            lamps and monolith sculptures.
+      <section className="py-14 sm:py-20 border-b border-daxul-black/10">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 space-y-3">
+          <span className="font-mono text-xs uppercase tracking-[0.25em] text-[#71717A] block">
+            Custom Objects
+          </span>
+          <h1 className="text-3xl sm:text-5xl font-bold uppercase tracking-tight text-daxul-black">
+            Customize Your Object
+          </h1>
+          <p className="text-sm text-[#555550] max-w-xl leading-relaxed">
+            Turn your personal photos, portraits, logos, and ideas into light-refracting projection lamps and monoliths.
           </p>
         </div>
       </section>
 
-      <section className="flex-1 py-12 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full space-y-10">
+      <section className="flex-1 py-12 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 w-full space-y-12">
         {/* Process */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {steps.map((st, i) => {
             const Icon = st.icon;
             return (
-              <div key={i} className="bg-daxul-dark border border-daxul-graphite rounded-2xl p-5 space-y-2">
-                <Icon className="w-5 h-5 text-daxul-lime" />
-                <h3 className="text-sm font-extrabold uppercase text-white">{st.title}</h3>
-                <p className="text-xs text-gray-400 leading-relaxed">{st.desc}</p>
+              <div key={i} className="bg-white border border-daxul-black/10 rounded-xl p-6 space-y-3">
+                <Icon className="w-5 h-5 text-daxul-black" />
+                <h3 className="text-sm font-bold uppercase text-daxul-black">{st.title}</h3>
+                <p className="text-xs text-[#71717A] leading-relaxed">{st.desc}</p>
               </div>
             );
           })}
         </div>
 
         {/* Customizable objects */}
-        <div className="space-y-4">
-          <h2 className="text-xl font-black uppercase tracking-tight">Choose an object to personalize</h2>
+        <div className="space-y-6">
+          <h2 className="text-xl sm:text-2xl font-bold uppercase tracking-tight text-daxul-black">
+            Choose an object to personalize
+          </h2>
           {customizable.length === 0 ? (
-            <div className="text-center py-14 bg-daxul-dark border border-daxul-graphite rounded-2xl text-gray-400 text-sm">
+            <div className="text-center py-14 bg-white border border-daxul-black/10 rounded-xl text-[#71717A] text-sm">
               Personalized objects are being prepared. Browse the{" "}
-              <Link href="/shop" className="text-daxul-lime underline">
+              <Link href="/shop" className="text-daxul-black font-semibold underline">
                 full catalog
               </Link>
               .
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {customizable.map((p) => (
                 <Link
                   key={p.id}
                   href={`/shop/${p.slug}`}
-                  className="flex items-center gap-4 bg-daxul-dark border border-daxul-graphite hover:border-daxul-lime rounded-2xl p-4 group transition-all"
+                  className="flex items-center gap-4 bg-white border border-daxul-black/10 hover:border-daxul-black rounded-xl p-4 group transition-all"
                 >
-                  <div className="w-20 h-20 rounded-xl bg-daxul-black overflow-hidden shrink-0">
+                  <div className="w-20 h-20 rounded-lg bg-[#EAE5DA] overflow-hidden shrink-0">
                     {p.images[0] && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+                      <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[10px] font-mono uppercase tracking-widest text-daxul-gray">{p.category}</div>
-                    <div className="text-sm font-bold text-white group-hover:text-daxul-lime transition-colors truncate">
+                    <div className="text-[10px] font-mono uppercase tracking-widest text-[#71717A]">{p.category}</div>
+                    <div className="text-sm font-bold text-daxul-black group-hover:underline truncate">
                       {p.name}
                     </div>
-                    <div className="text-xs text-gray-400">From {formatMoney(s.currencySymbol, p.price)}</div>
+                    <div className="text-xs font-semibold text-daxul-black mt-1">
+                      From {formatMoney(s.currencySymbol, p.price)}
+                    </div>
                   </div>
-                  <ArrowRight className="w-4 h-4 text-daxul-lime" />
+                  <ArrowRight className="w-4 h-4 text-daxul-black group-hover:translate-x-1 transition-transform" />
                 </Link>
               ))}
             </div>

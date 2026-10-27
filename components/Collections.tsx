@@ -2,119 +2,116 @@
 
 import React from "react";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { useCms } from "@/lib/cmsContext";
-import CmsMediaDisplay from "./CmsMediaDisplay";
-import { HomepageSection } from "@/lib/types";
-import { ArrowUpRight } from "lucide-react";
+import type { StoreCollection } from "@/lib/types";
 
 interface CollectionsProps {
-  section?: HomepageSection;
+  /** Real collection records from PostgreSQL (server-fetched). */
+  collections?: StoreCollection[];
 }
 
-export default function Collections({ section }: CollectionsProps) {
+export default function Collections({ collections = [] }: CollectionsProps) {
   const { collections: cmsCol } = useCms();
 
-  const title = cmsCol?.sectionHeading || section?.title || "COLLECTIONS";
-  const eyebrow = cmsCol?.eyebrow || section?.subtitle || "03 / CATALOG ARCHIVE";
-  const tiles = cmsCol?.tiles || [];
+  const title = cmsCol?.sectionHeading || "Shop by Collection";
+  const eyebrow = cmsCol?.eyebrow;
+
+  // Prefer database collections to ensure admin image/name updates reflect immediately
+  // If collections prop is empty or has fewer, blend with CMS tiles
+  const tiles = React.useMemo(() => {
+    if (collections && collections.length > 0) {
+      return collections.slice(0, 5).map((col) => {
+        // Find matching CMS tile if any for custom descriptor
+        const cmsMatch = cmsCol?.tiles?.find(
+          (t) => t.slug === col.slug || t.title.toLowerCase() === col.name.toLowerCase()
+        );
+        return {
+          id: col.id,
+          name: col.name,
+          slug: col.slug,
+          image: col.image || cmsMatch?.media?.url || "/images/collection_shadow.jpg",
+          url: `/collections/${col.slug}`,
+          count: col.productCount,
+        };
+      });
+    }
+
+    // Fallback to CMS tiles if no DB collections passed
+    return (cmsCol?.tiles || []).slice(0, 5).map((t) => ({
+      id: t.id || t.slug,
+      name: t.title,
+      slug: t.slug,
+      image: t.media?.url || "/images/collection_shadow.jpg",
+      url: t.destinationUrl || `/collections/${t.slug}`,
+      count: undefined,
+    }));
+  }, [collections, cmsCol]);
+
+  if (tiles.length === 0) return null;
 
   return (
-    <section id="collections" className="bg-daxul-bone text-daxul-black py-20 lg:py-32 border-b border-daxul-black/15 transition-colors">
+    <section id="collections" className="bg-daxul-bone text-daxul-black py-16 sm:py-24 border-b border-daxul-black/10">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10">
         
-        {/* Editorial Section Top Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between pb-8 mb-12 border-b border-daxul-black/15">
+        {/* Section Top Header */}
+        <div className="flex items-end justify-between pb-6 mb-10 border-b border-daxul-black/10">
           <div>
-            <div className="font-mono text-[10px] tracking-[0.25em] text-[#666660] uppercase mb-2">
-              [ {eyebrow} ]
-            </div>
-            <h2 className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tighter uppercase leading-[0.88] text-daxul-black">
+            {eyebrow && (
+              <span className="font-mono text-xs uppercase tracking-[0.25em] text-[#71717A] block mb-2">
+                {eyebrow}
+              </span>
+            )}
+            <h2 className="text-3xl sm:text-5xl font-bold tracking-tight uppercase text-daxul-black">
               {title}
             </h2>
           </div>
 
           <Link
             href="/collections"
-            className="mt-6 sm:mt-0 inline-flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-daxul-black hover:text-[#555550] transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.15em] text-daxul-black hover:opacity-70 transition-opacity"
           >
-            <span>VIEW FULL ARCHIVE</span>
-            <ArrowUpRight className="w-4 h-4" />
+            <span>View all</span>
+            <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
 
-        {/* Editorial Asymmetrical Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-10">
-          
-          {/* Top Items (6 Cols Each) */}
-          {tiles.slice(0, 2).map((item) => (
+        {/* Large Clean Image Tiles */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+          {tiles.map((item) => (
             <Link
-              key={item.id || item.title}
-              href={item.destinationUrl || `/collections/${item.slug}`}
-              className="group md:col-span-6 border border-daxul-black/15 bg-[#EAE5DA]/50 hover:bg-[#EAE5DA] transition-colors p-6 sm:p-8 flex flex-col justify-between"
+              key={item.id}
+              href={item.url}
+              className="group flex flex-col justify-between space-y-3"
             >
-              <div className="space-y-4 mb-6">
-                <div className="relative aspect-[16/10] w-full overflow-hidden bg-daxul-black/5 border border-daxul-black/10">
-                  <CmsMediaDisplay
-                    media={item.media}
-                    fallbackUrl={item.media?.url || "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?q=80&w=1000&auto=format&fit=crop"}
-                    fallbackAlt={item.title}
-                    className="w-full h-full object-cover object-center transform transition-transform duration-700 ease-out group-hover:scale-[1.02]"
-                  />
-                </div>
+              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-[#EAE5DA] border border-daxul-black/10">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                />
               </div>
 
-              <div className="flex items-end justify-between pt-4 border-t border-daxul-black/15">
+              <div className="flex items-center justify-between pt-1">
                 <div>
-                  <h3 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-daxul-black leading-none mb-2">
-                    {item.title}
+                  <h3 className="text-base sm:text-lg font-bold uppercase tracking-tight text-daxul-black group-hover:underline">
+                    {item.name}
                   </h3>
-                  <p className="text-xs sm:text-sm text-[#555550] max-w-sm font-normal">
-                    {item.descriptor}
-                  </p>
+                  {typeof item.count === "number" && (
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-[#71717A] block">
+                      {item.count} {item.count === 1 ? "Object" : "Objects"}
+                    </span>
+                  )}
                 </div>
 
-                <div className="w-10 h-10 border border-daxul-black/20 text-daxul-black group-hover:bg-daxul-black group-hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 ml-4">
-                  <ArrowUpRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </div>
+                <span className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-daxul-black group-hover:opacity-70 transition-opacity">
+                  <span>Explore</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </span>
               </div>
             </Link>
           ))}
-
-          {/* Remaining Items (4 Cols Each) */}
-          {tiles.slice(2).map((item) => (
-            <Link
-              key={item.id || item.title}
-              href={item.destinationUrl || `/collections/${item.slug}`}
-              className="group md:col-span-4 border border-daxul-black/15 bg-[#EAE5DA]/50 hover:bg-[#EAE5DA] transition-colors p-6 flex flex-col justify-between"
-            >
-              <div className="space-y-4 mb-6">
-                <div className="relative aspect-[4/3] w-full overflow-hidden bg-daxul-black/5 border border-daxul-black/10">
-                  <CmsMediaDisplay
-                    media={item.media}
-                    fallbackUrl={item.media?.url || "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=1000&auto=format&fit=crop"}
-                    fallbackAlt={item.title}
-                    className="w-full h-full object-cover object-center transform transition-transform duration-700 ease-out group-hover:scale-[1.02]"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-end justify-between pt-4 border-t border-daxul-black/15">
-                <div>
-                  <h3 className="text-2xl sm:text-4xl font-black uppercase tracking-tight text-daxul-black leading-none mb-2">
-                    {item.title}
-                  </h3>
-                  <p className="text-xs text-[#555550] font-normal line-clamp-2">
-                    {item.descriptor}
-                  </p>
-                </div>
-
-                <div className="w-9 h-9 border border-daxul-black/20 text-daxul-black group-hover:bg-daxul-black group-hover:text-white flex items-center justify-center transition-all duration-300 shrink-0 ml-3">
-                  <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </div>
-              </div>
-            </Link>
-          ))}
-
         </div>
 
       </div>

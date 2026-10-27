@@ -33,7 +33,7 @@ export default async function ProductDetailPage({ params }: Params) {
   const related = await getRelatedProducts(product.id, product.category, 4);
 
   return (
-    <main className="min-h-screen bg-daxul-black flex flex-col font-sans text-white">
+    <main className="min-h-screen bg-daxul-bone text-daxul-black flex flex-col font-sans">
       <Header />
       <ProductClient product={product} related={related} />
       <Footer />

@@ -9,11 +9,10 @@ export default function Footer() {
   const { footer: cmsFooter } = useCms();
   const settings = useSiteSettings();
 
-  const wordmarkText = cmsFooter?.wordmarkText || "DAXUL LABS";
-  const tagline = cmsFooter?.tagline || "Objects made differently.";
+  const wordmarkText = cmsFooter?.wordmarkText || settings.brandName || "DAXUL LABS";
+  const tagline = cmsFooter?.tagline || settings.brandTagline || "Objects made differently.";
   const copyrightLine = cmsFooter?.copyrightLine || settings.footerText || "© 2026 DAXUL LABS";
-  const madeInIndiaText = cmsFooter?.madeInIndiaText || "Made in India.";
-  const columns = cmsFooter?.columns || [];
+  const madeInIndiaText = cmsFooter?.madeInIndiaText || "Crafted on-demand in India.";
 
   const isHttp = (u: string | null | undefined): u is string => !!u && /^https?:\/\//i.test(u);
   const whatsAppHref = isHttp(settings.whatsAppUrl)
@@ -21,85 +20,144 @@ export default function Footer() {
     : settings.whatsAppNumber
     ? `https://wa.me/${settings.whatsAppNumber.replace(/[^0-9]/g, "")}`
     : null;
-  const socials = [
-    { label: "Instagram", url: isHttp(settings.instagramUrl) ? settings.instagramUrl : null },
-    { label: "WhatsApp", url: whatsAppHref },
-    { label: "YouTube", url: isHttp(settings.youtubeUrl) ? settings.youtubeUrl : null },
-    { label: "Facebook", url: isHttp(settings.facebookUrl) ? settings.facebookUrl : null },
-  ].filter((x): x is { label: string; url: string } => !!x.url);
 
   return (
-    <footer className="bg-daxul-black text-white border-t border-daxul-graphite pt-16 lg:pt-24 pb-12 mt-auto">
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 space-y-16">
+    <footer className="bg-daxul-bone text-daxul-black border-t border-daxul-black/10 pt-16 sm:pt-20 pb-12 mt-auto">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 space-y-12">
         
-        {/* Large DAXUL LABS Wordmark & Tagline */}
-        <div className="border-b border-daxul-graphite pb-12">
-          <Link href="/" className="inline-block select-none group">
-            <h2 className="text-5xl sm:text-7xl lg:text-9xl font-black uppercase tracking-tighter text-white group-hover:text-white/80 transition-colors leading-none">
+        {/* Top: Wordmark & Tagline */}
+        <div className="space-y-2 pb-8 border-b border-daxul-black/10">
+          <Link href="/" className="inline-block select-none">
+            <h2 className="text-3xl sm:text-5xl font-bold uppercase tracking-tight text-daxul-black">
               {wordmarkText}
             </h2>
-            <div className="font-mono text-xs sm:text-sm tracking-[0.35em] text-daxul-gray uppercase mt-3">
-              {tagline}
-            </div>
           </Link>
+          <p className="font-mono text-xs uppercase tracking-[0.25em] text-[#71717A]">
+            {tagline}
+          </p>
         </div>
 
-        {/* Dynamic 4-Column Navigation Layout */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 font-mono text-xs">
-          {columns.map((col) => (
-            <div key={col.id || col.heading} className="space-y-4">
-              <div className="text-[10px] tracking-[0.25em] text-daxul-gray uppercase">
-                {col.heading}
-              </div>
-              <ul className="space-y-2.5 text-daxul-gray">
-                {col.links.map((link) => {
-                  const isExternal = link.url.startsWith("http") || link.url.startsWith("mailto:");
-                  if (isExternal) {
-                    return (
-                      <li key={link.url + link.label}>
-                        <a
-                          href={link.url}
-                          target={link.url.startsWith("http") ? "_blank" : undefined}
-                          rel={link.url.startsWith("http") ? "noopener noreferrer" : undefined}
-                          className="hover:text-white transition-colors"
-                        >
-                          {link.label}
-                        </a>
-                      </li>
-                    );
-                  }
-                  return (
-                    <li key={link.url + link.label}>
-                      <Link href={link.url} className="hover:text-white transition-colors">
-                        {link.label}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+        {/* Columns Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 sm:gap-10 text-xs">
+          
+          {/* Col 1: Shop */}
+          <div className="space-y-3.5">
+            <div className="font-mono text-[10px] tracking-[0.25em] text-[#71717A] uppercase font-semibold">
+              Explore
             </div>
-          ))}
-        </div>
-
-        {/* Social links (from Store Settings) */}
-        {socials.length > 0 && (
-          <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-[11px] uppercase tracking-[0.2em] text-daxul-gray">
-            {socials.map((s) => (
-              <a
-                key={s.label}
-                href={s.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-white transition-colors"
-              >
-                {s.label}
-              </a>
-            ))}
+            <ul className="space-y-2 text-[#555550]">
+              <li>
+                <Link href="/shop" className="hover:text-daxul-black transition-colors">
+                  Shop All Objects
+                </Link>
+              </li>
+              <li>
+                <Link href="/collections" className="hover:text-daxul-black transition-colors">
+                  Collections
+                </Link>
+              </li>
+              <li>
+                <Link href="/customize" className="hover:text-daxul-black transition-colors">
+                  Customize
+                </Link>
+              </li>
+            </ul>
           </div>
-        )}
+
+          {/* Col 2: About & Info */}
+          <div className="space-y-3.5">
+            <div className="font-mono text-[10px] tracking-[0.25em] text-[#71717A] uppercase font-semibold">
+              About
+            </div>
+            <ul className="space-y-2 text-[#555550]">
+              <li>
+                <Link href="/about" className="hover:text-daxul-black transition-colors">
+                  About DAXUL
+                </Link>
+              </li>
+              <li>
+                <Link href="/track" className="hover:text-daxul-black transition-colors">
+                  Track Order
+                </Link>
+              </li>
+              <li>
+                <Link href="/account" className="hover:text-daxul-black transition-colors">
+                  Account & Orders
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 3: Policies */}
+          <div className="space-y-3.5">
+            <div className="font-mono text-[10px] tracking-[0.25em] text-[#71717A] uppercase font-semibold">
+              Policies
+            </div>
+            <ul className="space-y-2 text-[#555550]">
+              <li>
+                <Link href="/policies/shipping" className="hover:text-daxul-black transition-colors">
+                  Shipping & Delivery
+                </Link>
+              </li>
+              <li>
+                <Link href="/policies/returns" className="hover:text-daxul-black transition-colors">
+                  Returns & Replacement
+                </Link>
+              </li>
+              <li>
+                <Link href="/policies/terms" className="hover:text-daxul-black transition-colors">
+                  Terms & Conditions
+                </Link>
+              </li>
+              <li>
+                <Link href="/policies/privacy" className="hover:text-daxul-black transition-colors">
+                  Privacy Policy
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 4: Support & Social (from Store Settings) */}
+          <div className="space-y-3.5">
+            <div className="font-mono text-[10px] tracking-[0.25em] text-[#71717A] uppercase font-semibold">
+              Support
+            </div>
+            <ul className="space-y-2 text-[#555550]">
+              {settings.contactEmail && (
+                <li>
+                  <a href={`mailto:${settings.contactEmail}`} className="hover:text-daxul-black transition-colors">
+                    {settings.contactEmail}
+                  </a>
+                </li>
+              )}
+              {settings.contactPhone && (
+                <li>
+                  <a href={`tel:${settings.contactPhone}`} className="hover:text-daxul-black transition-colors">
+                    {settings.contactPhone}
+                  </a>
+                </li>
+              )}
+              {whatsAppHref && (
+                <li>
+                  <a href={whatsAppHref} target="_blank" rel="noopener noreferrer" className="hover:text-daxul-black transition-colors">
+                    WhatsApp {settings.whatsAppNumber || "Support"}
+                  </a>
+                </li>
+              )}
+              {settings.instagramUrl && (
+                <li>
+                  <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" className="hover:text-daxul-black transition-colors">
+                    Instagram
+                  </a>
+                </li>
+              )}
+            </ul>
+          </div>
+
+        </div>
 
         {/* Minimal Bottom Line */}
-        <div className="pt-8 border-t border-daxul-graphite flex flex-col sm:flex-row justify-between items-center gap-4 font-mono text-[10px] text-daxul-gray uppercase tracking-widest">
+        <div className="pt-8 border-t border-daxul-black/10 flex flex-col sm:flex-row justify-between items-center gap-3 font-mono text-[10px] text-[#71717A] uppercase tracking-wider">
           <div>{copyrightLine}</div>
           <div>{madeInIndiaText}</div>
         </div>

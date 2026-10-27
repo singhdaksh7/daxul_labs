@@ -14,8 +14,28 @@ export const dynamic = 'force-dynamic';
  *    user or an admin. Guessing the name is not enough (401/404 otherwise).
  *  - Unregistered files are readable by admins only.
  */
+/** Parse a single `bytes=a-b` range. Returns null when absent, 'invalid' when unsatisfiable. */
+function parseRange(header: string | null, size: number): { start: number; end: number } | 'invalid' | null {
+  if (!header) return null;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!m || (m[1] === '' && m[2] === '')) return 'invalid';
+  let start: number;
+  let end: number;
+  if (m[1] === '') {
+    const suffix = Number(m[2]);
+    if (!suffix) return 'invalid';
+    start = Math.max(0, size - suffix);
+    end = size - 1;
+  } else {
+    start = Number(m[1]);
+    end = m[2] === '' ? size - 1 : Math.min(Number(m[2]), size - 1);
+  }
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start > end || start >= size) return 'invalid';
+  return { start, end };
+}
+
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ filename: string }> }
 ) {
   try {
@@ -66,8 +86,19 @@ export async function GET(
     };
     const contentType = types[ext] || 'application/octet-stream';
 
-    return new NextResponse(new Uint8Array(stored.body), {
+    const total = stored.body.length;
+    const range = parseRange(req.headers.get('range'), total);
+    if (range === 'invalid') {
+      return new NextResponse(null, { status: 416, headers: { 'Content-Range': `bytes */${total}` } });
+    }
+    const body = range ? stored.body.subarray(range.start, range.end + 1) : stored.body;
+
+    return new NextResponse(new Uint8Array(body), {
+      status: range ? 206 : 200,
       headers: {
+        'Accept-Ranges': 'bytes',
+        ...(range ? { 'Content-Range': `bytes ${range.start}-${range.end}/${total}` } : {}),
+        'Content-Length': String(body.length),
         'Content-Type': contentType,
         // Public media may be cached by browsers/CDN; private artwork never.
         'Cache-Control': mediaAsset ? 'public, max-age=3600' : 'private, no-store',

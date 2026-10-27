@@ -280,166 +280,170 @@ export default function CheckoutPage() {
   };
 
   const inputCls =
-    "w-full bg-daxul-black border border-daxul-graphite focus:border-daxul-lime daxul-btn p-3 text-white focus:outline-none";
+    "w-full bg-white border border-daxul-black/15 focus:border-daxul-black rounded-lg p-3 text-xs text-daxul-black focus:outline-none";
 
   return (
-    <main className="min-h-screen bg-daxul-black flex flex-col font-sans text-white">
+    <main className="min-h-screen bg-daxul-bone text-daxul-black flex flex-col font-sans">
       <Header />
 
-      <section className="bg-daxul-dark border-b border-daxul-graphite py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-2">
-          <span className="text-xs font-mono uppercase tracking-[0.3em] text-daxul-lime">ENCRYPTED CHECKOUT</span>
-          <h1 className="text-3xl font-extrabold uppercase">Complete Your Order</h1>
+      <section className="py-10 border-b border-daxul-black/10">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10">
+          <span className="font-mono text-xs uppercase tracking-[0.25em] text-[#71717A] block mb-1">
+            Checkout
+          </span>
+          <h1 className="text-3xl sm:text-4xl font-bold uppercase tracking-tight text-daxul-black">
+            Complete Your Order
+          </h1>
         </div>
       </section>
 
-      <section className="flex-1 py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+      <section className="flex-1 py-10 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 w-full">
         {phase === "confirmed" && order ? (
-          <div className="bg-daxul-dark border border-daxul-lime p-8 sm:p-12 daxul-card-lg max-w-2xl mx-auto text-center space-y-6 shadow-2xl">
-            <CheckCircle2 className="w-16 h-16 text-daxul-lime mx-auto" />
+          <div className="bg-white border border-daxul-black/15 p-8 sm:p-12 rounded-xl max-w-xl mx-auto text-center space-y-6 shadow-sm">
+            <CheckCircle2 className="w-12 h-12 text-daxul-black mx-auto" />
             <div className="space-y-2">
-              <span className="text-xs font-mono text-daxul-lime uppercase tracking-widest block">ORDER CONFIRMED</span>
-              <h2 className="text-3xl font-extrabold uppercase text-white">Order #{order.orderNumber} Placed!</h2>
-              <p className="text-xs text-gray-400">
+              <span className="font-mono text-xs text-[#71717A] uppercase tracking-widest block">ORDER CONFIRMED</span>
+              <h2 className="text-2xl sm:text-3xl font-bold uppercase text-daxul-black">Order #{order.orderNumber} Placed!</h2>
+              <p className="text-xs text-[#555550]">
                 Thank you, {confirmedName}. We will email updates to{" "}
-                <strong className="text-white">{confirmedEmail}</strong>. Keep your order number and the email or
+                <strong className="text-daxul-black">{confirmedEmail}</strong>. Keep your order number and the email or
                 phone you used to track progress.
               </p>
             </div>
 
-            <div className="bg-daxul-black p-6 rounded-2xl border border-daxul-graphite text-left text-xs space-y-2">
+            <div className="bg-[#F3F0E9] p-5 rounded-lg border border-daxul-black/10 text-left text-xs space-y-2">
               {order.subtotal !== undefined && (
-                <div className="flex justify-between text-gray-300">
+                <div className="flex justify-between text-[#555550]">
                   <span>Items</span>
                   <span>{money(order.subtotal)}</span>
                 </div>
               )}
               {!!order.discountAmount && (
-                <div className="flex justify-between text-daxul-lime">
+                <div className="flex justify-between text-green-700">
                   <span>Discount</span>
                   <span>-{money(order.discountAmount)}</span>
                 </div>
               )}
               {order.shippingFee !== undefined && (
-                <div className="flex justify-between text-gray-300">
+                <div className="flex justify-between text-[#555550]">
                   <span>Shipping</span>
                   <span>{order.shippingFee === 0 ? "FREE" : money(order.shippingFee)}</span>
                 </div>
               )}
               {!!order.codFee && (
-                <div className="flex justify-between text-gray-300">
+                <div className="flex justify-between text-[#555550]">
                   <span>COD handling</span>
                   <span>{money(order.codFee)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-white uppercase pt-2 border-t border-daxul-graphite">
+              <div className="flex justify-between font-bold text-daxul-black uppercase pt-2 border-t border-daxul-black/10">
                 <span>Total</span>
-                <span className="text-daxul-lime">{money(order.totalAmount)}</span>
+                <span>{money(order.totalAmount)}</span>
               </div>
-              <div className="text-gray-400">
-                Payment: {paidMethod === "cod" ? "Cash on Delivery (pay on arrival)" : "Prepaid (paid online)"}
+              <div className="text-[#71717A]">
+                Payment: {paidMethod === "cod" ? "Cash on Delivery" : "Prepaid (Online)"}
               </div>
             </div>
 
             <div className="flex justify-center gap-4 pt-2 flex-wrap">
               <button
                 onClick={() => window.print()}
-                className="bg-daxul-graphite hover:bg-gray-700 text-white px-6 py-3 daxul-btn-pill text-xs font-bold uppercase flex items-center gap-2"
+                className="bg-transparent hover:bg-daxul-black/5 border border-daxul-black/30 text-daxul-black px-6 py-3 rounded-lg text-xs font-semibold uppercase flex items-center gap-2"
               >
                 <Printer className="w-4 h-4" />
                 <span>Print Receipt</span>
               </button>
               <Link
                 href="/track"
-                className="bg-daxul-lime text-daxul-black px-8 py-3 daxul-btn-pill text-xs font-extrabold uppercase hover:bg-white transition-colors"
+                className="bg-daxul-lime hover:bg-[#bcf82a] text-daxul-black border border-daxul-black px-8 py-3 rounded-lg text-xs font-bold uppercase transition-colors"
               >
                 Track Order →
               </Link>
             </div>
           </div>
         ) : phase === "awaiting_payment" && order ? (
-          <div className="bg-daxul-dark border border-daxul-graphite p-8 sm:p-12 daxul-card-lg max-w-2xl mx-auto text-center space-y-5">
-            <h2 className="text-2xl font-extrabold uppercase">Complete Your Payment</h2>
-            <p className="text-xs text-gray-400">
-              Order <strong className="text-white">#{order.orderNumber}</strong> for{" "}
-              <strong className="text-daxul-lime">{money(order.totalAmount)}</strong> is waiting for payment.
+          <div className="bg-white border border-daxul-black/15 p-8 sm:p-12 rounded-xl max-w-xl mx-auto text-center space-y-5 shadow-sm">
+            <h2 className="text-2xl font-bold uppercase text-daxul-black">Complete Your Payment</h2>
+            <p className="text-xs text-[#555550]">
+              Order <strong className="text-daxul-black">#{order.orderNumber}</strong> for{" "}
+              <strong className="text-daxul-black">{money(order.totalAmount)}</strong> is waiting for payment.
             </p>
             {error && (
-              <div role="alert" className="text-xs bg-red-500/10 border border-red-500/30 text-red-300 p-3 rounded-xl">
+              <div role="alert" className="text-xs bg-red-50 border border-red-300 text-red-700 p-3 rounded-lg">
                 {error}
               </div>
             )}
             <button
               onClick={() => openRazorpay(order)}
-              className="bg-daxul-lime text-daxul-black px-8 py-3 daxul-btn text-xs font-extrabold uppercase tracking-widest hover:bg-white transition-colors"
+              className="bg-daxul-lime hover:bg-[#bcf82a] text-daxul-black border border-daxul-black px-8 py-3.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors"
             >
               Pay {money(order.totalAmount)} Now
             </button>
           </div>
         ) : isHydrated && cart.length === 0 ? (
-          <div className="text-center py-20 bg-daxul-dark border border-daxul-graphite daxul-card space-y-4 max-w-md mx-auto">
-            <p className="text-base font-bold uppercase text-gray-300">Your Checkout Cart is Empty</p>
+          <div className="text-center py-20 bg-white border border-daxul-black/10 rounded-xl space-y-4 max-w-md mx-auto">
+            <p className="text-base font-bold uppercase text-daxul-black">Your Checkout Cart is Empty</p>
             <Link
               href="/shop"
-              className="bg-daxul-lime text-daxul-black px-8 py-3 rounded-full text-xs font-bold uppercase inline-block"
+              className="bg-daxul-lime text-daxul-black border border-daxul-black px-8 py-3 rounded-lg text-xs font-bold uppercase inline-block"
             >
               Explore Store
             </Link>
           </div>
         ) : (
-          <form onSubmit={handlePlaceOrder} className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-            {/* Left: Address & Payment */}
-            <div className="lg:col-span-7 space-y-8">
-              <div className="bg-daxul-dark border border-daxul-graphite p-6 daxul-card space-y-4">
-                <h3 className="text-base font-bold uppercase tracking-wider text-white flex items-center gap-2 border-b border-daxul-graphite pb-3">
-                  <Truck className="w-4 h-4 text-daxul-lime" />
-                  <span>1. Delivery Address</span>
+          <form onSubmit={handlePlaceOrder} className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+            {/* Left: Address, Shipping & Payment */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="bg-white border border-daxul-black/10 p-6 rounded-xl space-y-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-daxul-black flex items-center gap-2 border-b border-daxul-black/10 pb-3">
+                  <Truck className="w-4 h-4 text-daxul-black" />
+                  <span>1. Contact & Delivery Address</span>
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div className="space-y-1">
-                    <label className="text-gray-400 font-bold uppercase">Full Name *</label>
+                    <label className="text-[#71717A] font-semibold uppercase">Full Name *</label>
                     <input type="text" required autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} className={`${inputCls} uppercase`} />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-gray-400 font-bold uppercase">Email Address *</label>
+                    <label className="text-[#71717A] font-semibold uppercase">Email Address *</label>
                     <input type="email" required autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} />
                   </div>
                   <div className="space-y-1 sm:col-span-2">
-                    <label className="text-gray-400 font-bold uppercase">Street Address / Apartment *</label>
+                    <label className="text-[#71717A] font-semibold uppercase">Street Address / Apartment *</label>
                     <input type="text" required autoComplete="street-address" value={street} onChange={(e) => setStreet(e.target.value)} className={inputCls} />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-gray-400 font-bold uppercase">City *</label>
+                    <label className="text-[#71717A] font-semibold uppercase">City *</label>
                     <input type="text" required autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} className={`${inputCls} uppercase`} />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-gray-400 font-bold uppercase">State *</label>
+                    <label className="text-[#71717A] font-semibold uppercase">State *</label>
                     <input type="text" required autoComplete="address-level1" value={state} onChange={(e) => setState(e.target.value)} className={`${inputCls} uppercase`} />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-gray-400 font-bold uppercase">PIN Code *</label>
+                    <label className="text-[#71717A] font-semibold uppercase">PIN Code *</label>
                     <input type="text" required inputMode="numeric" autoComplete="postal-code" value={pincode} onChange={(e) => setPincode(e.target.value)} className={inputCls} />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-gray-400 font-bold uppercase">Phone Number *</label>
+                    <label className="text-[#71717A] font-semibold uppercase">Phone Number *</label>
                     <input type="tel" required autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
                   </div>
                 </div>
               </div>
 
               {shippingOptions.length > 0 && (
-                <div className="bg-daxul-dark border border-daxul-graphite p-6 daxul-card space-y-4">
-                  <h3 className="text-base font-bold uppercase tracking-wider text-white flex items-center gap-2 border-b border-daxul-graphite pb-3">
-                    <Truck className="w-4 h-4 text-daxul-lime" />
+                <div className="bg-white border border-daxul-black/10 p-6 rounded-xl space-y-4">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-daxul-black flex items-center gap-2 border-b border-daxul-black/10 pb-3">
+                    <Truck className="w-4 h-4 text-daxul-black" />
                     <span>2. Shipping Method</span>
                   </h3>
                   <div className="space-y-3">
                     {shippingOptions.map((o) => (
                       <label
                         key={o.method}
-                        className={`flex items-center justify-between p-4 daxul-btn border cursor-pointer transition-all ${
-                          selectedMethod === o.method ? "bg-daxul-black border-daxul-lime" : "bg-daxul-dark border-daxul-graphite"
+                        className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all ${
+                          selectedMethod === o.method ? "bg-[#F3F0E9] border-daxul-black" : "bg-white border-daxul-black/15 hover:border-daxul-black/40"
                         }`}
                       >
                         <div className="flex items-center gap-3">
@@ -448,27 +452,27 @@ export default function CheckoutPage() {
                             name="shipping"
                             checked={selectedMethod === o.method}
                             onChange={() => setShippingMethod(o.method)}
-                            className="accent-daxul-lime"
+                            className="accent-daxul-black"
                           />
-                          <div className="text-xs font-bold text-white uppercase">{o.method === "EXPRESS" ? "Express Shipping" : "Standard Shipping"}</div>
+                          <div className="text-xs font-semibold text-daxul-black uppercase">{o.method === "EXPRESS" ? "Express Shipping" : "Standard Shipping"}</div>
                         </div>
-                        <span className="text-xs font-mono font-bold text-daxul-lime">{o.fee === 0 ? "FREE" : money(o.fee)}</span>
+                        <span className="text-xs font-mono font-bold text-daxul-black">{o.fee === 0 ? "FREE" : money(o.fee)}</span>
                       </label>
                     ))}
                   </div>
                 </div>
               )}
 
-              <div className="bg-daxul-dark border border-daxul-graphite p-6 daxul-card space-y-4">
-                <h3 className="text-base font-bold uppercase tracking-wider text-white flex items-center gap-2 border-b border-daxul-graphite pb-3">
-                  <CreditCard className="w-4 h-4 text-daxul-lime" />
+              <div className="bg-white border border-daxul-black/10 p-6 rounded-xl space-y-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-daxul-black flex items-center gap-2 border-b border-daxul-black/10 pb-3">
+                  <CreditCard className="w-4 h-4 text-daxul-black" />
                   <span>3. Payment Option</span>
                 </h3>
 
                 <div className="space-y-3">
                   <label
-                    className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${
-                      paymentMethod === "prepaid" ? "bg-daxul-black border-daxul-lime" : "bg-daxul-dark border-daxul-graphite"
+                    className={`flex items-center justify-between p-4 rounded-lg border cursor-pointer transition-all ${
+                      paymentMethod === "prepaid" ? "bg-[#F3F0E9] border-daxul-black" : "bg-white border-daxul-black/15 hover:border-daxul-black/40"
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -477,23 +481,23 @@ export default function CheckoutPage() {
                         name="payment"
                         checked={paymentMethod === "prepaid"}
                         onChange={() => setPaymentMethod("prepaid")}
-                        className="accent-daxul-lime"
+                        className="accent-daxul-black"
                       />
                       <div>
-                        <div className="text-xs font-bold text-white uppercase">Prepaid Payment (UPI / Cards / NetBanking)</div>
-                        <div className="text-[11px] text-gray-400">Instant slicing priority & fastest dispatch</div>
+                        <div className="text-xs font-semibold text-daxul-black uppercase">Prepaid Payment (UPI / Cards / NetBanking)</div>
+                        <div className="text-[11px] text-[#71717A]">Fastest on-demand production dispatch</div>
                       </div>
                     </div>
-                    <span className="text-xs font-mono text-daxul-lime font-bold">RECOMMENDED</span>
+                    <span className="text-xs font-mono text-daxul-black font-semibold">RECOMMENDED</span>
                   </label>
 
                   <label
-                    className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                    className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
                       !isCodAllowed
-                        ? "opacity-40 cursor-not-allowed border-daxul-graphite"
+                        ? "opacity-40 cursor-not-allowed border-daxul-black/10 bg-gray-50"
                         : paymentMethod === "cod"
-                        ? "bg-daxul-black border-daxul-lime cursor-pointer"
-                        : "bg-daxul-dark border-daxul-graphite cursor-pointer"
+                        ? "bg-[#F3F0E9] border-daxul-black cursor-pointer"
+                        : "bg-white border-daxul-black/15 hover:border-daxul-black/40 cursor-pointer"
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -503,17 +507,17 @@ export default function CheckoutPage() {
                         disabled={!isCodAllowed}
                         checked={paymentMethod === "cod"}
                         onChange={() => isCodAllowed && setPaymentMethod("cod")}
-                        className="accent-daxul-lime"
+                        className="accent-daxul-black"
                       />
                       <div>
-                        <div className="text-xs font-bold text-white uppercase">Cash on Delivery (COD)</div>
+                        <div className="text-xs font-semibold text-daxul-black uppercase">Cash on Delivery (COD)</div>
                         {!isCodAllowed ? (
-                          <div className="text-[10px] text-amber-300">{codBlockedReason}</div>
+                          <div className="text-[10px] text-amber-600">{codBlockedReason}</div>
                         ) : (
-                          <div className="text-[11px] text-gray-400">
+                          <div className="text-[11px] text-[#71717A]">
                             {(quote ? quote.cod.fee : settings.codFeeEnabled ? settings.codFee : 0) > 0
                               ? `+${money(quote ? quote.cod.fee : settings.codFee)} COD handling fee`
-                              : "Pay when your order arrives"}
+                              : "Pay upon delivery"}
                           </div>
                         )}
                       </div>
@@ -525,8 +529,8 @@ export default function CheckoutPage() {
 
             {/* Right: Order Summary */}
             <div className="lg:col-span-5 space-y-6">
-              <div className="bg-daxul-dark border border-daxul-graphite p-6 daxul-card space-y-6 sticky top-28">
-                <h3 className="text-base font-extrabold uppercase text-white border-b border-daxul-graphite pb-3">
+              <div className="bg-white border border-daxul-black/10 p-6 rounded-xl space-y-6 sticky top-28">
+                <h3 className="text-sm font-bold uppercase text-daxul-black border-b border-daxul-black/10 pb-3">
                   Order Summary ({cart.reduce((a, i) => a + i.quantity, 0)} Objects)
                 </h3>
 
@@ -535,31 +539,31 @@ export default function CheckoutPage() {
                     <div key={item.id} className="flex gap-3 items-center text-xs">
                       {item.image ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-lg bg-daxul-black" />
+                        <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-lg bg-[#EAE5DA] border border-daxul-black/10" />
                       ) : (
-                        <div className="w-12 h-12 rounded-lg bg-daxul-black" />
+                        <div className="w-12 h-12 rounded-lg bg-[#EAE5DA]" />
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-white line-clamp-1 uppercase">{item.name}</div>
-                        <div className="text-gray-400 truncate">
+                        <div className="font-bold text-daxul-black line-clamp-1 uppercase">{item.name}</div>
+                        <div className="text-[#71717A] truncate">
                           Qty: {item.quantity}
                           {item.variantSelections.length > 0 &&
                             ` • ${item.variantSelections.map((v) => v.variantName).join(", ")}`}
                         </div>
                       </div>
-                      <div className="font-extrabold text-white">{money(item.unitPrice * item.quantity)}</div>
+                      <div className="font-bold text-daxul-black">{money(item.unitPrice * item.quantity)}</div>
                     </div>
                   ))}
                 </div>
 
-                {/* Promo code (validated by the server when the order is placed) */}
+                {/* Promo code */}
                 <div className="space-y-2">
                   {couponCode ? (
                     <div
-                      className={`flex justify-between items-center text-xs p-2 rounded-lg border ${
+                      className={`flex justify-between items-center text-xs p-2.5 rounded-lg border ${
                         couponQuote && !couponQuote.valid
-                          ? "bg-red-500/10 border-red-500/30 text-red-300"
-                          : "bg-daxul-lime/10 border-daxul-lime/30 text-daxul-lime"
+                          ? "bg-red-50 border-red-300 text-red-700"
+                          : "bg-green-50 border-green-300 text-green-800"
                       }`}
                     >
                       <span>
@@ -569,7 +573,7 @@ export default function CheckoutPage() {
                             ? `Code ${couponQuote.code} applied: -${money(couponQuote.discountAmount)}`
                             : couponQuote.message}
                       </span>
-                      <button type="button" onClick={() => setCouponCode("")} className="underline text-gray-400 hover:text-white text-[10px]">
+                      <button type="button" onClick={() => setCouponCode("")} className="underline text-[#71717A] hover:text-daxul-black text-[10px]">
                         Remove
                       </button>
                     </div>
@@ -583,12 +587,12 @@ export default function CheckoutPage() {
                         onKeyDown={(e) => {
                           if (e.key === "Enter") handleApplyCoupon(e);
                         }}
-                        className="flex-1 bg-daxul-black border border-daxul-graphite rounded-xl px-3 py-2 text-xs text-white uppercase placeholder:text-gray-600 focus:outline-none focus:border-daxul-lime"
+                        className="flex-1 bg-[#F3F0E9] border border-daxul-black/15 rounded-lg px-3 py-2 text-xs text-daxul-black uppercase placeholder:text-[#71717A]/60 focus:outline-none focus:border-daxul-black"
                       />
                       <button
                         type="button"
                         onClick={handleApplyCoupon}
-                        className="bg-daxul-graphite hover:bg-daxul-lime hover:text-daxul-black px-4 py-2 daxul-btn text-xs font-bold uppercase transition-all"
+                        className="bg-daxul-black text-daxul-bone px-4 py-2 rounded-lg text-xs font-semibold uppercase hover:bg-daxul-black/85 transition-colors"
                       >
                         Apply
                       </button>
@@ -596,32 +600,32 @@ export default function CheckoutPage() {
                   )}
                 </div>
 
-                <div className="space-y-2 text-xs text-gray-300 pt-4 border-t border-daxul-graphite">
+                <div className="space-y-2 text-xs text-[#555550] pt-4 border-t border-daxul-black/10">
                   <div className="flex justify-between">
                     <span>{quote ? "Items Subtotal" : "Items Subtotal (est.)"}</span>
-                    <span>{money(shownSubtotal)}</span>
+                    <span className="text-daxul-black">{money(shownSubtotal)}</span>
                   </div>
                   {shownDiscount > 0 && (
-                    <div className="flex justify-between text-daxul-lime">
+                    <div className="flex justify-between text-green-700">
                       <span>Discount</span>
                       <span>-{money(shownDiscount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
                     <span>{quote ? "Shipping" : "Shipping (est.)"}</span>
-                    <span>{shownShipping === 0 ? <span className="text-daxul-lime">FREE</span> : money(shownShipping)}</span>
+                    <span className="text-daxul-black">{shownShipping === 0 ? "FREE" : money(shownShipping)}</span>
                   </div>
                   {shownCodFee > 0 && (
-                    <div className="flex justify-between text-amber-300">
+                    <div className="flex justify-between text-amber-700">
                       <span>COD Handling Fee</span>
                       <span>+{money(shownCodFee)}</span>
                     </div>
                   )}
-                  <div className={`flex justify-between text-base font-black text-white pt-3 border-t border-daxul-graphite ${quoteLoading ? "opacity-60" : ""}`}>
+                  <div className={`flex justify-between text-base font-bold text-daxul-black pt-3 border-t border-daxul-black/10 ${quoteLoading ? "opacity-60" : ""}`}>
                     <span>{quote ? "Total" : "Estimated Total"}</span>
-                    <span className="text-daxul-lime">{money(shownTotal)}</span>
+                    <span>{money(shownTotal)}</span>
                   </div>
-                  <p className="text-[10px] text-gray-500">
+                  <p className="text-[10px] text-[#71717A]">
                     {quote
                       ? "Totals are calculated securely by our server and re-checked when you place the order."
                       : quoteError
@@ -629,14 +633,14 @@ export default function CheckoutPage() {
                         : "Calculating your total..."}
                   </p>
                   {blockingIssue && (
-                    <div role="alert" className="text-[11px] bg-amber-500/10 border border-amber-500/30 text-amber-300 p-2 rounded-lg">
+                    <div role="alert" className="text-[11px] bg-amber-50 border border-amber-300 text-amber-800 p-2 rounded-lg">
                       {blockingIssue}
                     </div>
                   )}
                 </div>
 
                 {error && phase === "form" && (
-                  <div role="alert" className="text-xs bg-red-500/10 border border-red-500/30 text-red-300 p-3 rounded-xl">
+                  <div role="alert" className="text-xs bg-red-50 border border-red-300 text-red-700 p-3 rounded-lg">
                     {error}
                   </div>
                 )}
@@ -644,15 +648,15 @@ export default function CheckoutPage() {
                 <button
                   type="submit"
                   disabled={phase === "submitting" || cart.length === 0 || quoteLoading || !!blockingIssue}
-                  className="w-full bg-daxul-lime text-daxul-black py-4 daxul-btn text-xs font-extrabold uppercase tracking-widest hover:bg-white transition-all shadow-xl shadow-daxul-lime/20 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full bg-daxul-lime hover:bg-[#bcf82a] text-daxul-black py-4 rounded-lg text-xs font-bold uppercase tracking-widest border border-daxul-black transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Lock className="w-4 h-4" />
                   <span>{phase === "submitting" ? "Placing Order..." : `Place Order (${money(shownTotal)})`}</span>
                 </button>
 
-                <div className="text-[10px] text-gray-500 text-center flex items-center justify-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-daxul-lime" />
-                  <span>256-bit Encrypted Checkout • DAXUL Guarantee</span>
+                <div className="text-[10px] text-[#71717A] text-center flex items-center justify-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-daxul-black" />
+                  <span>Secure 256-bit Encrypted Checkout</span>
                 </div>
               </div>
             </div>

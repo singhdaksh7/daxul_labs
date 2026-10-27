@@ -20,7 +20,7 @@ export default async function ShopPage() {
   const [products, collections] = await Promise.all([getProducts(), getCollections()]);
 
   return (
-    <main className="min-h-screen bg-daxul-black flex flex-col font-sans text-white">
+    <main className="min-h-screen bg-daxul-bone text-daxul-black flex flex-col font-sans">
       <Header />
       <ShopClient
         products={products}
