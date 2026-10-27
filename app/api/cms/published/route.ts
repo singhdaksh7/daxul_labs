@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { getPublishedCmsData } from '@/lib/cmsService';
 
-export const revalidate = 60; // Cache revalidation
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
     const data = await getPublishedCmsData();
     return NextResponse.json(data, {
       headers: {
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        'Cache-Control': 'no-cache, no-store, max-age=0, must-revalidate',
       },
     });
   } catch (err: any) {

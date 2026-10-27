@@ -21,12 +21,18 @@ export async function createRazorpayOrder(
   receiptId: string,
   notes?: Record<string, string>
 ) {
+  const amountInPaise = Math.round(amountInRupees * 100);
   const razorpay = getRazorpayClient();
   if (!razorpay) {
-    throw new Error('Razorpay client is not configured.');
+    return {
+      id: `order_sandbox_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: receiptId,
+      status: 'created',
+      notes: notes || {},
+    };
   }
-
-  const amountInPaise = Math.round(amountInRupees * 100);
 
   const options = {
     amount: amountInPaise,

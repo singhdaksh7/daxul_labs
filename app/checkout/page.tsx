@@ -436,7 +436,7 @@ export default function CheckoutPage() {
                 <div className="bg-white border border-daxul-black/10 p-6 rounded-xl space-y-4">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-daxul-black flex items-center gap-2 border-b border-daxul-black/10 pb-3">
                     <Truck className="w-4 h-4 text-daxul-black" />
-                    <span>2. Shipping Method</span>
+                    <span>Shipping Method</span>
                   </h3>
                   <div className="space-y-3">
                     {shippingOptions.map((o) => (
@@ -466,7 +466,7 @@ export default function CheckoutPage() {
               <div className="bg-white border border-daxul-black/10 p-6 rounded-xl space-y-4">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-daxul-black flex items-center gap-2 border-b border-daxul-black/10 pb-3">
                   <CreditCard className="w-4 h-4 text-daxul-black" />
-                  <span>3. Payment Option</span>
+                  <span>2. Payment Option</span>
                 </h3>
 
                 <div className="space-y-3">
@@ -622,7 +622,7 @@ export default function CheckoutPage() {
                     </div>
                   )}
                   <div className={`flex justify-between text-base font-bold text-daxul-black pt-3 border-t border-daxul-black/10 ${quoteLoading ? "opacity-60" : ""}`}>
-                    <span>{quote ? "Total" : "Estimated Total"}</span>
+                    <span>Estimated Total</span>
                     <span>{money(shownTotal)}</span>
                   </div>
                   <p className="text-[10px] text-[#71717A]">
