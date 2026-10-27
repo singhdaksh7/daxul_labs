@@ -51,6 +51,7 @@ test.describe('09 policies', () => {
     await gotoAdmin(page, '/admin/policies');
     await page.getByRole('button', { name: SLUG, exact: true }).click();
     const ta = page.getByLabel(/^Content \(markdown\)/);
+    await expect(ta).toContainText('QA policy marker');
     await ta.fill(orig.content);
     await page.getByRole('button', { name: 'Save policy' }).click();
     await expect(page.getByRole('status')).toContainText('Saved.');

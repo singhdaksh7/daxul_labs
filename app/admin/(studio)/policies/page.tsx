@@ -59,6 +59,7 @@ export default function AdminPoliciesPage() {
             key={p.slug}
             onClick={() => {
               setActive(p.slug);
+              setDraft({ ...p });
               setNotice(null);
             }}
             className={`px-3 py-1.5 rounded-lg font-mono text-xs uppercase ${active === p.slug ? "bg-[#C8FF35] text-[#0B0B0C] font-bold" : "bg-[#151515] text-[#B9B9B4] border border-[#242426]"}`}
@@ -69,7 +70,7 @@ export default function AdminPoliciesPage() {
       </div>
 
       {draft && (
-        <div className="grid lg:grid-cols-2 gap-4">
+        <div key={draft.slug} className="grid lg:grid-cols-2 gap-4">
           <Card title="Edit">
             <div className="space-y-4">
               <Field label="Title">
