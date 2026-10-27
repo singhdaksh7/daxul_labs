@@ -42,6 +42,11 @@ export const DEFAULT_CMS_HERO: CmsHeroContent = {
     focalPosition: 'center',
     fitMode: 'cover',
   },
+  carouselAutoplay: true,
+  carouselInterval: 5500,
+  carouselShowArrows: true,
+  carouselShowDots: true,
+  carouselTransitionStyle: 'subtle',
 };
 
 export const DEFAULT_CMS_FEATURED_PRODUCT: CmsFeaturedProductContent = {

@@ -10,29 +10,53 @@ import Hero from "@/components/Hero";
 interface HeroCarouselProps {
   initialBanners?: HeroBannerSlide[];
   autoplay?: boolean;
-  interval?: number; // milliseconds, default 5000
+  interval?: number; // milliseconds, default 5500
   showArrows?: boolean;
   showDots?: boolean;
+  transitionStyle?: "subtle";
   className?: string;
 }
 
 export default function HeroCarousel({
   initialBanners = [],
   autoplay = true,
-  interval = 5000,
+  interval = 5500,
   showArrows = true,
   showDots = true,
+  transitionStyle = "subtle",
   className = "",
 }: HeroCarouselProps) {
   const [banners, setBanners] = useState<HeroBannerSlide[]>(initialBanners);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isInteracting, setIsInteracting] = useState(false);
   const [isReducedMotion, setIsReducedMotion] = useState(false);
+
+  const resumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Touch swipe tracking
   const touchStartX = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Register manual user interaction: pause rotation and resume after interval ms of inactivity
+  const registerUserInteraction = useCallback(() => {
+    setIsInteracting(true);
+    if (resumeTimeoutRef.current) {
+      clearTimeout(resumeTimeoutRef.current);
+    }
+    resumeTimeoutRef.current = setTimeout(() => {
+      setIsInteracting(false);
+    }, interval);
+  }, [interval]);
+
+  useEffect(() => {
+    return () => {
+      if (resumeTimeoutRef.current) {
+        clearTimeout(resumeTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Fetch banners client-side if not provided during SSR
   useEffect(() => {
@@ -95,24 +119,41 @@ export default function HeroCarousel({
     setCurrentIndex(idx);
   }, []);
 
+  // User manual navigation triggers
+  const handleNext = useCallback(() => {
+    registerUserInteraction();
+    nextSlide();
+  }, [registerUserInteraction, nextSlide]);
+
+  const handlePrev = useCallback(() => {
+    registerUserInteraction();
+    prevSlide();
+  }, [registerUserInteraction, prevSlide]);
+
+  const handleGoTo = useCallback((idx: number) => {
+    registerUserInteraction();
+    goToSlide(idx);
+  }, [registerUserInteraction, goToSlide]);
+
   // Autoplay timer
   useEffect(() => {
-    if (!autoplay || isPaused || isReducedMotion || total <= 1) return;
+    // If only 1 banner or autoplay disabled or paused or interacting or reduced motion: do not auto-rotate
+    if (!autoplay || isPaused || isInteracting || isReducedMotion || total <= 1) return;
 
     const timer = setInterval(() => {
       nextSlide();
     }, interval);
 
     return () => clearInterval(timer);
-  }, [autoplay, isPaused, isReducedMotion, total, interval, nextSlide]);
+  }, [autoplay, isPaused, isInteracting, isReducedMotion, total, interval, nextSlide]);
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (total <= 1) return;
     if (e.key === "ArrowLeft") {
-      prevSlide();
+      handlePrev();
     } else if (e.key === "ArrowRight") {
-      nextSlide();
+      handleNext();
     }
   };
 
@@ -132,10 +173,10 @@ export default function HeroCarousel({
 
     if (diff > threshold) {
       // Swiped left -> next
-      nextSlide();
+      handleNext();
     } else if (diff < -threshold) {
       // Swiped right -> prev
-      prevSlide();
+      handlePrev();
     }
 
     touchStartX.current = null;
@@ -188,7 +229,7 @@ export default function HeroCarousel({
               key={slide.id || index}
               data-banner-id={slide.id}
               className={`absolute inset-0 w-full h-full transition-opacity ${
-                isReducedMotion ? "duration-0" : "duration-700"
+                isReducedMotion ? "duration-0" : "duration-600"
               } ease-in-out ${
                 isActive ? "opacity-100 z-10 pointer-events-auto" : "opacity-0 z-0 pointer-events-none"
               }`}
@@ -310,7 +351,7 @@ export default function HeroCarousel({
             <div className="hidden sm:flex absolute right-6 lg:right-10 bottom-8 z-30 items-center gap-2">
               <button
                 type="button"
-                onClick={prevSlide}
+                onClick={handlePrev}
                 className="w-10 h-10 rounded-full border border-daxul-black/20 bg-daxul-bone/80 hover:bg-daxul-bone text-daxul-black flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-daxul-lime"
                 aria-label="Previous slide"
               >
@@ -318,7 +359,7 @@ export default function HeroCarousel({
               </button>
               <button
                 type="button"
-                onClick={nextSlide}
+                onClick={handleNext}
                 className="w-10 h-10 rounded-full border border-daxul-black/20 bg-daxul-bone/80 hover:bg-daxul-bone text-daxul-black flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-daxul-lime"
                 aria-label="Next slide"
               >
@@ -340,7 +381,7 @@ export default function HeroCarousel({
                   <button
                     key={slide.id || idx}
                     type="button"
-                    onClick={() => goToSlide(idx)}
+                    onClick={() => handleGoTo(idx)}
                     role="tab"
                     aria-selected={isSelected}
                     aria-label={`Go to slide ${idx + 1}`}

@@ -42,6 +42,11 @@ export interface CmsHeroContent {
   secondaryCtaLabel: string;
   secondaryCtaUrl: string;
   media: CmsMediaConfig;
+  carouselAutoplay?: boolean;
+  carouselInterval?: number; // ms, default 5500
+  carouselShowArrows?: boolean;
+  carouselShowDots?: boolean;
+  carouselTransitionStyle?: 'subtle';
 }
 
 export interface CmsFeaturedProductContent {

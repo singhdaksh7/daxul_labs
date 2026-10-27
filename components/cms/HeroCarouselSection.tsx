@@ -36,9 +36,10 @@ export default function HeroCarouselSection({ content }: HeroCarouselSectionProp
     <HeroCarousel
       initialBanners={banners}
       autoplay={content.autoplay !== false}
-      interval={content.interval || 5000}
+      interval={content.interval || 5500}
       showArrows={content.showArrows !== false}
       showDots={content.showDots !== false}
+      transitionStyle={content.transitionStyle || "subtle"}
     />
   );
 }

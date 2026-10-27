@@ -56,9 +56,10 @@ export interface HeroCarouselSectionContent {
   eyebrow?: string;
   heading?: string;
   autoplay?: boolean;
-  interval?: number; // ms, default 5000
+  interval?: number; // ms, default 5500
   showArrows?: boolean;
   showDots?: boolean;
+  transitionStyle?: 'subtle';
   heightPreset?: 'default' | 'tall' | 'compact' | 'fullscreen';
   selectedBannerIds?: string[];
   fallbackToStatic?: boolean;

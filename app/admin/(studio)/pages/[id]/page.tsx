@@ -25,6 +25,7 @@ import { PageSectionType } from "@/lib/cms/pageTypes";
 import CmsSectionRenderer from "@/components/cms/CmsSectionRenderer";
 
 const SECTION_TYPE_OPTIONS: { type: PageSectionType; label: string }[] = [
+  { type: "HERO_CAROUSEL", label: "Hero Carousel (Multi-Banner)" },
   { type: "HERO", label: "Hero Banner" },
   { type: "BANNER", label: "Announcement / Promo Banner" },
   { type: "TEXT", label: "Rich Text / Manifesto" },
@@ -905,6 +906,84 @@ export default function PageBuilderPage({ params }: { params: Promise<{ id: stri
                         onChange={(e) => updateField("heightDesktop", parseInt(e.target.value) || 64)}
                         className="w-full bg-[#1C1C1E] border border-[#242426] px-3 py-2 text-white focus:outline-none"
                       />
+                    </div>
+                  </div>
+                )}
+
+                {/* Hero Carousel Settings */}
+                {(currentSection.type === "HERO_CAROUSEL" || currentSection.type === "HERO") && (
+                  <div className="space-y-3 pt-3 border-t border-[#242426]">
+                    <label className="block font-mono uppercase text-daxul-lime font-bold">
+                      Carousel Playback Controls
+                    </label>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#B9B9B4]">Autoplay</span>
+                      <button
+                        type="button"
+                        onClick={() => updateField("autoplay", editingContent.autoplay === false ? true : false)}
+                        className={`px-3 py-1 font-mono text-[10px] uppercase font-bold transition-colors ${
+                          editingContent.autoplay !== false
+                            ? "bg-daxul-lime text-daxul-black"
+                            : "bg-[#242426] text-[#71717A]"
+                        }`}
+                      >
+                        {editingContent.autoplay !== false ? "ON" : "OFF"}
+                      </button>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[#B9B9B4]">Interval (ms)</span>
+                        <span className="font-mono text-[10px] text-[#71717A]">5000-6000ms</span>
+                      </div>
+                      <input
+                        type="number"
+                        step={500}
+                        min={1000}
+                        max={60000}
+                        value={editingContent.interval ?? 5500}
+                        onChange={(e) => updateField("interval", parseInt(e.target.value) || 5500)}
+                        className="w-full bg-[#1C1C1E] border border-[#242426] px-3 py-2 text-white font-mono focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#B9B9B4]">Show Arrows</span>
+                      <button
+                        type="button"
+                        onClick={() => updateField("showArrows", editingContent.showArrows === false ? true : false)}
+                        className={`px-3 py-1 font-mono text-[10px] uppercase font-bold transition-colors ${
+                          editingContent.showArrows !== false
+                            ? "bg-daxul-lime text-daxul-black"
+                            : "bg-[#242426] text-[#71717A]"
+                        }`}
+                      >
+                        {editingContent.showArrows !== false ? "ON" : "OFF"}
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#B9B9B4]">Show Dots</span>
+                      <button
+                        type="button"
+                        onClick={() => updateField("showDots", editingContent.showDots === false ? true : false)}
+                        className={`px-3 py-1 font-mono text-[10px] uppercase font-bold transition-colors ${
+                          editingContent.showDots !== false
+                            ? "bg-daxul-lime text-daxul-black"
+                            : "bg-[#242426] text-[#71717A]"
+                        }`}
+                      >
+                        {editingContent.showDots !== false ? "ON" : "OFF"}
+                      </button>
+                    </div>
+
+                    <div>
+                      <span className="text-[#B9B9B4] block mb-1">Transition Style</span>
+                      <div className="bg-[#1C1C1E] border border-[#242426] px-3 py-2 text-white font-mono text-[10px] flex items-center justify-between">
+                        <span>Subtle Crossfade (600ms)</span>
+                        <span className="text-daxul-lime text-[9px] uppercase font-bold">LOCKED</span>
+                      </div>
                     </div>
                   </div>
                 )}

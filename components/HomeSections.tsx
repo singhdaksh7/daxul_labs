@@ -30,7 +30,7 @@ export default function HomeSections({
   collections = [],
   initialHeroBanners = [],
 }: HomeSectionsProps) {
-  const { visibility, sectionsList } = useCms();
+  const { visibility, sectionsList, hero } = useCms();
 
   // Sort sections by admin sortOrder if available
   const orderedSectionKeys = useMemo(() => {
@@ -54,7 +54,15 @@ export default function HomeSections({
     switch (key) {
       case "HERO":
         return visibility.HERO !== false ? (
-          <HeroCarousel key="HERO" initialBanners={initialHeroBanners} />
+          <HeroCarousel
+            key="HERO"
+            initialBanners={initialHeroBanners}
+            autoplay={hero.carouselAutoplay !== false}
+            interval={hero.carouselInterval || 5500}
+            showArrows={hero.carouselShowArrows !== false}
+            showDots={hero.carouselShowDots !== false}
+            transitionStyle={hero.carouselTransitionStyle || "subtle"}
+          />
         ) : null;
       case "FEATURED_PRODUCT":
         return visibility.FEATURED_PRODUCT !== false ? (

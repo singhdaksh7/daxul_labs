@@ -63,6 +63,61 @@ export default function AdminBannersPage() {
   const [uploadingMobile, setUploadingMobile] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
+  // Hero Carousel Playback & Navigation Settings
+  const [carouselAutoplay, setCarouselAutoplay] = useState(true);
+  const [carouselInterval, setCarouselInterval] = useState(5500);
+  const [carouselShowArrows, setCarouselShowArrows] = useState(true);
+  const [carouselShowDots, setCarouselShowDots] = useState(true);
+  const [carouselTransitionStyle, setCarouselTransitionStyle] = useState<"subtle">("subtle");
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsFeedback, setSettingsFeedback] = useState<string | null>(null);
+
+  const fetchCarouselSettings = async () => {
+    try {
+      const res = await fetch("/api/admin/banners/settings");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.settings) {
+          setCarouselAutoplay(data.settings.autoplay !== false);
+          setCarouselInterval(data.settings.interval || 5500);
+          setCarouselShowArrows(data.settings.showArrows !== false);
+          setCarouselShowDots(data.settings.showDots !== false);
+          setCarouselTransitionStyle(data.settings.transitionStyle || "subtle");
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load carousel settings", e);
+    }
+  };
+
+  const handleSaveCarouselSettings = async () => {
+    setSavingSettings(true);
+    try {
+      const res = await fetch("/api/admin/banners/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          autoplay: carouselAutoplay,
+          interval: Number(carouselInterval) || 5500,
+          showArrows: carouselShowArrows,
+          showDots: carouselShowDots,
+          transitionStyle: carouselTransitionStyle,
+        }),
+      });
+      if (res.ok) {
+        setSettingsFeedback("Settings published live!");
+        setTimeout(() => setSettingsFeedback(null), 3000);
+      } else {
+        alert("Failed to save carousel settings");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error saving carousel settings");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   const fetchBanners = async () => {
     setLoading(true);
     try {
@@ -78,6 +133,7 @@ export default function AdminBannersPage() {
 
   useEffect(() => {
     fetchBanners();
+    fetchCarouselSettings();
   }, []);
 
   const filteredBanners = banners.filter((b) => {
@@ -379,18 +435,140 @@ export default function AdminBannersPage() {
         </button>
       </div>
 
-      {/* Info notice for Homepage Hero */}
+      {/* Info notice and Carousel Controls for Homepage Hero */}
       {activeTab === "HOMEPAGE_HERO" && (
-        <div className="bg-[#ECE8E0] border border-daxul-black/10 p-4 text-xs text-[#555550] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="font-bold text-daxul-black block mb-0.5">Homepage Hero Carousel Behavior</span>
-            When 2+ active slides exist, the homepage automatically runs a smooth moving carousel (5s autoplay, hover-pause, touch swipe). If 1 slide exists, it serves a minimal static hero. If 0 slides exist, it seamlessly falls back to the default hero.
+        <div className="space-y-4">
+          <div className="bg-[#ECE8E0] border border-daxul-black/10 p-4 text-xs text-[#555550] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <span className="font-bold text-daxul-black block mb-0.5">Homepage Hero Carousel Behavior</span>
+              When 2+ active slides exist, the homepage automatically auto-rotates every 5.5s with a smooth 600ms subtle crossfade, hover pause, user interaction pause/resume, and mobile touch swipe. If 1 slide exists, it serves a minimal static hero. If 0 slides exist, it seamlessly falls back to the default hero.
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="inline-block w-2 h-2 rounded-full bg-daxul-lime" />
+              <span className="font-mono text-[10px] uppercase font-bold text-daxul-black">
+                {filteredBanners.filter((b) => b.visible && b.status === "PUBLISHED").length} Active in Public Carousel
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="inline-block w-2 h-2 rounded-full bg-daxul-lime" />
-            <span className="font-mono text-[10px] uppercase font-bold text-daxul-black">
-              {filteredBanners.filter((b) => b.visible && b.status === "PUBLISHED").length} Active in Public Carousel
-            </span>
+
+          {/* Carousel Playback & Navigation Settings Box */}
+          <div className="bg-white border border-daxul-black/10 p-4 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-daxul-black/10">
+              <div>
+                <h3 className="font-bold text-sm uppercase tracking-wider text-daxul-black">
+                  Hero Carousel Section Settings
+                </h3>
+                <p className="text-xs text-[#71717A]">
+                  Configure global auto-rotation, interval, navigation arrows, and pagination dots for the homepage hero.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {settingsFeedback && (
+                  <span className="font-mono text-xs text-green-700 bg-green-50 px-2.5 py-1 border border-green-200">
+                    {settingsFeedback}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSaveCarouselSettings}
+                  disabled={savingSettings}
+                  className="bg-daxul-lime text-daxul-black hover:bg-[#bcf82a] font-bold text-xs uppercase tracking-widest px-5 py-2.5 border border-daxul-black transition-colors"
+                >
+                  {savingSettings ? "Saving..." : "Save Carousel Settings"}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 pt-1 text-xs">
+              {/* Autoplay */}
+              <div className="space-y-1.5 p-3 bg-daxul-bone border border-daxul-black/10 flex flex-col justify-between">
+                <div>
+                  <span className="font-mono uppercase text-[10px] text-[#71717A] block font-semibold">Autoplay</span>
+                  <p className="text-[11px] text-[#555550]">Automatically switch slides</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCarouselAutoplay(!carouselAutoplay)}
+                  className={`mt-2 py-1.5 px-3 font-mono text-[11px] font-bold uppercase border transition-colors ${
+                    carouselAutoplay
+                      ? "bg-daxul-lime text-daxul-black border-daxul-black"
+                      : "bg-white text-[#71717A] border-daxul-black/20"
+                  }`}
+                >
+                  {carouselAutoplay ? "ENABLED (ON)" : "DISABLED (OFF)"}
+                </button>
+              </div>
+
+              {/* Interval */}
+              <div className="space-y-1.5 p-3 bg-daxul-bone border border-daxul-black/10 flex flex-col justify-between">
+                <div>
+                  <span className="font-mono uppercase text-[10px] text-[#71717A] block font-semibold">Interval (ms)</span>
+                  <p className="text-[11px] text-[#555550]">5000–6000ms recommended</p>
+                </div>
+                <div className="mt-2 flex items-center gap-1">
+                  <input
+                    type="number"
+                    step={500}
+                    min={1000}
+                    max={60000}
+                    value={carouselInterval}
+                    onChange={(e) => setCarouselInterval(parseInt(e.target.value) || 5500)}
+                    className="w-full bg-white border border-daxul-black/20 px-2.5 py-1.5 font-mono text-xs text-daxul-black focus:outline-none focus:border-daxul-black"
+                  />
+                  <span className="font-mono text-[10px] text-[#71717A]">ms</span>
+                </div>
+              </div>
+
+              {/* Show Arrows */}
+              <div className="space-y-1.5 p-3 bg-daxul-bone border border-daxul-black/10 flex flex-col justify-between">
+                <div>
+                  <span className="font-mono uppercase text-[10px] text-[#71717A] block font-semibold">Show Arrows</span>
+                  <p className="text-[11px] text-[#555550]">Prev / Next arrow buttons</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCarouselShowArrows(!carouselShowArrows)}
+                  className={`mt-2 py-1.5 px-3 font-mono text-[11px] font-bold uppercase border transition-colors ${
+                    carouselShowArrows
+                      ? "bg-daxul-lime text-daxul-black border-daxul-black"
+                      : "bg-white text-[#71717A] border-daxul-black/20"
+                  }`}
+                >
+                  {carouselShowArrows ? "VISIBLE" : "HIDDEN"}
+                </button>
+              </div>
+
+              {/* Show Dots */}
+              <div className="space-y-1.5 p-3 bg-daxul-bone border border-daxul-black/10 flex flex-col justify-between">
+                <div>
+                  <span className="font-mono uppercase text-[10px] text-[#71717A] block font-semibold">Show Dots</span>
+                  <p className="text-[11px] text-[#555550]">Slide indicators at bottom</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCarouselShowDots(!carouselShowDots)}
+                  className={`mt-2 py-1.5 px-3 font-mono text-[11px] font-bold uppercase border transition-colors ${
+                    carouselShowDots
+                      ? "bg-daxul-lime text-daxul-black border-daxul-black"
+                      : "bg-white text-[#71717A] border-daxul-black/20"
+                  }`}
+                >
+                  {carouselShowDots ? "VISIBLE" : "HIDDEN"}
+                </button>
+              </div>
+
+              {/* Transition Style */}
+              <div className="space-y-1.5 p-3 bg-daxul-bone border border-daxul-black/10 flex flex-col justify-between">
+                <div>
+                  <span className="font-mono uppercase text-[10px] text-[#71717A] block font-semibold">Transition Style</span>
+                  <p className="text-[11px] text-[#555550]">Subtle 600ms crossfade</p>
+                </div>
+                <div className="mt-2 py-1.5 px-2.5 bg-white border border-daxul-black/20 font-mono text-[10px] text-daxul-black flex items-center justify-between">
+                  <span>SUBTLE (600ms)</span>
+                  <span className="text-[9px] bg-daxul-lime px-1.5 py-0.5 font-bold uppercase text-daxul-black">ACTIVE</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
