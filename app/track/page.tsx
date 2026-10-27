@@ -58,8 +58,14 @@ export default function TrackOrderPage() {
     setLoading(true);
 
     try {
-      const q = new URLSearchParams({ orderNumber: orderQuery.trim(), identifier: emailQuery.trim() });
-      const res = await fetch(`/api/track?${q.toString()}`);
+      const res = await fetch("/api/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orderNumber: orderQuery.trim(),
+          verificationInput: emailQuery.trim(),
+        }),
+      });
       const data = await res.json();
       if (!res.ok) {
         setErrorMessage(data.error || "Order not found. Please double check your order number and contact information.");

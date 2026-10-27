@@ -280,10 +280,10 @@ export default function AdminSiteEditorPage() {
   const isModified = JSON.stringify(draftDataMap[selectedKey]) !== JSON.stringify(publishedDataMap[selectedKey]);
 
   return (
-    <div className="min-h-full bg-[#0B0B0C] text-white flex flex-col font-sans selection:bg-[#C8FF35] selection:text-[#0B0B0C]">
+    <div className="min-h-full max-w-full overflow-x-hidden bg-[#0B0B0C] text-white flex flex-col font-sans selection:bg-[#C8FF35] selection:text-[#0B0B0C]">
       
       {/* Top Admin Editor Bar */}
-      <header className="bg-[#151515] border-b border-[#242426] sticky top-0 z-40 px-4 sm:px-6 py-3 flex items-center justify-between shadow-2xl">
+      <header className="bg-[#151515] border-b border-[#242426] sticky top-0 z-40 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shadow-2xl">
         <div className="flex items-center gap-4">
           <Link href="/admin" className="font-extrabold text-sm uppercase tracking-wider text-white hover:text-[#C8FF35]">
             ← Admin Dashboard

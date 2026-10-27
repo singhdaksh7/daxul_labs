@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
               productName: l.productName,
               productImage: l.productImage,
               productSku: l.productSku,
-              unitPrice: l.unitPrice,
+              unitPrice: l.basePrice + l.variantAdjustment,
               quantity: l.quantity,
               selectedFinish: l.selectedFinish,
               selectedColor: l.selectedColor,

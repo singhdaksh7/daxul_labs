@@ -142,7 +142,13 @@ export default function AdminShell({
           <p className="truncate text-xs font-semibold text-[#F3F0E9]" title={email}>{email}</p>
           <p className="mt-0.5 text-[10px] font-bold uppercase tracking-widest text-[#C8FF35]">{role.replace("_", " ")}</p>
           <button
-            onClick={() => signOut({ callbackUrl: "/admin/login" })}
+            onClick={async () => {
+              try {
+                await signOut({ redirect: false });
+              } finally {
+                window.location.href = "/admin/login";
+              }
+            }}
             className="mt-3 flex w-full items-center justify-center gap-2 rounded-md bg-[#242426] px-3 py-2 text-xs font-bold uppercase tracking-wider text-gray-200 transition-colors hover:bg-[#C8FF35] hover:text-[#0B0B0C]"
           >
             <LogOut className="h-3.5 w-3.5" /> Sign out
@@ -153,7 +159,7 @@ export default function AdminShell({
   );
 
   return (
-    <div className="min-h-screen bg-[#0B0B0C] text-[#F3F0E9]">
+    <div className="min-h-screen max-w-full overflow-x-hidden bg-[#0B0B0C] text-[#F3F0E9]">
       {/* Desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-[#242426] lg:block">{sidebar}</aside>
 
@@ -165,7 +171,7 @@ export default function AdminShell({
         </div>
       )}
 
-      <div className="flex min-h-screen flex-col lg:pl-64">
+      <div className="flex min-h-screen max-w-full min-w-0 flex-col overflow-x-hidden lg:pl-64">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-[#242426] bg-[#0B0B0C]/90 px-4 backdrop-blur lg:hidden">
           <button onClick={() => setOpen(true)} className="rounded-md p-2 text-gray-300 hover:bg-[#242426]" aria-label="Open menu">
             <Menu className="h-5 w-5" />
@@ -173,7 +179,7 @@ export default function AdminShell({
           <span className="text-sm font-black uppercase tracking-[0.25em]">DAXUL</span>
           <span className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[#C8FF35]">Studio OS</span>
         </header>
-        <main className="min-w-0 flex-1">{children}</main>
+        <main className="min-w-0 max-w-full flex-1 overflow-x-hidden">{children}</main>
       </div>
     </div>
   );
