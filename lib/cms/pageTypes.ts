@@ -2,6 +2,7 @@ import { CmsMediaConfig } from '@/lib/cmsTypes';
 
 export type PageSectionType =
   | 'HERO'
+  | 'HERO_CAROUSEL'
   | 'BANNER'
   | 'TEXT'
   | 'IMAGE_TEXT'
@@ -21,6 +22,47 @@ export type PageSectionType =
   | 'NEWSLETTER'
   | 'CONTACT'
   | 'SPACER';
+
+export interface HeroBannerSlide {
+  id: string;
+  name: string;
+  placement: string;
+  text: string;
+  eyebrow?: string | null;
+  headline?: string | null;
+  subheadline?: string | null;
+  body?: string | null;
+  buttonText?: string | null;
+  linkUrl?: string | null;
+  secondaryCtaLabel?: string | null;
+  secondaryCtaUrl?: string | null;
+  desktopImage?: string | null;
+  mobileImage?: string | null;
+  videoUrl?: string | null;
+  desktopImageMediaId?: string | null;
+  mobileImageMediaId?: string | null;
+  videoMediaId?: string | null;
+  textAlign?: 'left' | 'center' | 'right';
+  textMode?: 'dark' | 'light';
+  overlay?: boolean;
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  startDate?: string | null;
+  endDate?: string | null;
+  priority?: number;
+  visible?: boolean;
+}
+
+export interface HeroCarouselSectionContent {
+  eyebrow?: string;
+  heading?: string;
+  autoplay?: boolean;
+  interval?: number; // ms, default 5000
+  showArrows?: boolean;
+  showDots?: boolean;
+  heightPreset?: 'default' | 'tall' | 'compact' | 'fullscreen';
+  selectedBannerIds?: string[];
+  fallbackToStatic?: boolean;
+}
 
 export interface HeroSectionContent {
   eyebrow?: string;
@@ -256,6 +298,7 @@ export interface SpacerSectionContent {
 
 export type AnySectionContent =
   | HeroSectionContent
+  | HeroCarouselSectionContent
   | BannerSectionContent
   | TextSectionContent
   | ImageTextSectionContent

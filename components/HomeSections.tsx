@@ -2,6 +2,7 @@
 
 import React, { useMemo } from "react";
 import Hero from "@/components/Hero";
+import HeroCarousel from "@/components/HeroCarousel";
 import Collections from "@/components/Collections";
 import FeaturedProduct from "@/components/FeaturedProduct";
 import CustomSection from "@/components/CustomSection";
@@ -10,11 +11,13 @@ import BrandSection from "@/components/BrandSection";
 import InstagramSection from "@/components/InstagramSection";
 import { useCms } from "@/lib/cmsContext";
 import type { StoreCollection, StoreProduct } from "@/lib/types";
+import type { HeroBannerSlide } from "@/lib/cms/pageTypes";
 
 interface HomeSectionsProps {
   products: StoreProduct[];
   collections?: StoreCollection[];
   totalCount: number;
+  initialHeroBanners?: HeroBannerSlide[];
 }
 
 /**
@@ -25,6 +28,7 @@ interface HomeSectionsProps {
 export default function HomeSections({
   products,
   collections = [],
+  initialHeroBanners = [],
 }: HomeSectionsProps) {
   const { visibility, sectionsList } = useCms();
 
@@ -49,7 +53,9 @@ export default function HomeSections({
   const renderSection = (key: string) => {
     switch (key) {
       case "HERO":
-        return visibility.HERO !== false ? <Hero key="HERO" /> : null;
+        return visibility.HERO !== false ? (
+          <HeroCarousel key="HERO" initialBanners={initialHeroBanners} />
+        ) : null;
       case "FEATURED_PRODUCT":
         return visibility.FEATURED_PRODUCT !== false ? (
           <FeaturedProduct key="FEATURED_PRODUCT" products={products} />

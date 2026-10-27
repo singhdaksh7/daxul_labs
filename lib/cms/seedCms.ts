@@ -131,8 +131,10 @@ export async function ensureDefaultCmsData() {
     }
 
     // 3. Seed Announcement Banner
-    const bannerCount = await prisma.banner.count();
-    if (bannerCount === 0) {
+    const announcementCount = await prisma.banner.count({
+      where: { placement: 'ANNOUNCEMENT' },
+    });
+    if (announcementCount === 0) {
       await prisma.banner.create({
         data: {
           name: 'Default Store Announcement',
@@ -142,7 +144,61 @@ export async function ensureDefaultCmsData() {
           buttonText: 'SHOP',
           priority: 10,
           visible: true,
+          status: 'PUBLISHED',
         },
+      });
+    }
+
+    // 4. Seed Homepage Hero Carousel Slides
+    const heroBannerCount = await prisma.banner.count({
+      where: { placement: { in: ['HOMEPAGE_HERO', 'HOMEPAGE_TOP'] } },
+    });
+    if (heroBannerCount === 0) {
+      await prisma.banner.createMany({
+        data: [
+          {
+            name: 'Hero Slide 1 — Objects Made Differently',
+            placement: 'HOMEPAGE_HERO',
+            text: 'OBJECTS MADE DIFFERENTLY.',
+            eyebrow: 'DAXUL LABS / STUDIO',
+            headline: 'OBJECTS MADE DIFFERENTLY.',
+            subheadline: 'Sculptural lighting, custom lithophanes, and tactile devotional altars.',
+            body: 'Manufactured on-demand in India with algorithmic optics and plant-derived biopolymers.',
+            buttonText: 'SHOP OBJECTS',
+            linkUrl: '/shop',
+            secondaryCtaLabel: 'EXPLORE STUDIO',
+            secondaryCtaUrl: '/about',
+            desktopImage: '/images/hero_shadow_lamp.jpg',
+            mobileImage: '/images/hero_shadow_lamp.jpg',
+            textAlign: 'left',
+            textMode: 'dark',
+            overlay: false,
+            status: 'PUBLISHED',
+            priority: 10,
+            visible: true,
+          },
+          {
+            name: 'Hero Slide 2 — Custom Commissions',
+            placement: 'HOMEPAGE_HERO',
+            text: 'TURN IMAGINATION INTO LIGHT.',
+            eyebrow: 'BESPOKE ARCHITECTURE',
+            headline: 'TURN IMAGINATION INTO LIGHT.',
+            subheadline: 'Commission personalized lithophane lanterns and custom ambient installations.',
+            body: 'Send us your artwork or ideas. We craft precision digital proofs and manufacture to order.',
+            buttonText: 'START CUSTOM PROJECT',
+            linkUrl: '/customize',
+            secondaryCtaLabel: 'VIEW LAB EXPERIMENTS',
+            secondaryCtaUrl: '/lab',
+            desktopImage: '/images/custom_preview.jpg',
+            mobileImage: '/images/custom_preview.jpg',
+            textAlign: 'left',
+            textMode: 'dark',
+            overlay: false,
+            status: 'PUBLISHED',
+            priority: 5,
+            visible: true,
+          },
+        ],
       });
     }
   } catch (err) {

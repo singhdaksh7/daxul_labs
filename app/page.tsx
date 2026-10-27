@@ -2,11 +2,18 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import HomeSections from "@/components/HomeSections";
 import { getCollections, getProducts } from "@/lib/catalog";
+import { getActiveHeroBanners } from "@/lib/cms/pageService";
+import { ensureDefaultCmsData } from "@/lib/cms/seedCms";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const [products, collections] = await Promise.all([getProducts(), getCollections()]);
+  await ensureDefaultCmsData();
+  const [products, collections, heroBanners] = await Promise.all([
+    getProducts(),
+    getCollections(),
+    getActiveHeroBanners(),
+  ]);
 
   return (
     <main className="min-h-screen bg-daxul-bone text-daxul-black flex flex-col font-sans selection:bg-daxul-lime selection:text-daxul-black">
@@ -16,6 +23,7 @@ export default async function Home() {
           products={products.slice(0, 24)}
           collections={collections}
           totalCount={products.length}
+          initialHeroBanners={heroBanners as any}
         />
       </div>
       <Footer />

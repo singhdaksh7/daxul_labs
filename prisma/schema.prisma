@@ -584,22 +584,37 @@ model ContactInquiry {
 }
 
 model Banner {
-  id          String    @id @default(cuid())
-  name        String
-  placement   String    @default("ANNOUNCEMENT") // ANNOUNCEMENT, HOMEPAGE_TOP, PROMO_BAR, PAGE_HERO
-  text        String
-  buttonText  String?
-  linkUrl     String?
-  desktopImage String?
-  mobileImage  String?
-  startDate   DateTime?
-  endDate     DateTime?
-  priority    Int       @default(0)
-  visible     Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  name                String
+  placement           String    @default("ANNOUNCEMENT") // ANNOUNCEMENT, HOMEPAGE_HERO, PROMO_BAR, PAGE_HERO
+  text                String    // Primary text / fallback title
+  eyebrow             String?
+  headline            String?
+  subheadline         String?
+  body                String?   @db.Text
+  buttonText          String?   // Primary CTA label
+  linkUrl             String?   // Primary CTA link
+  secondaryCtaLabel   String?
+  secondaryCtaUrl     String?
+  desktopImage        String?
+  mobileImage         String?
+  videoUrl            String?
+  desktopImageMediaId String?
+  mobileImageMediaId  String?
+  videoMediaId        String?
+  textAlign           String    @default("left") // left, center, right
+  textMode            String    @default("dark") // dark, light
+  overlay             Boolean   @default(false)
+  status              String    @default("PUBLISHED") // DRAFT, PUBLISHED, ARCHIVED
+  startDate           DateTime?
+  endDate             DateTime?
+  priority            Int       @default(0)
+  visible             Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   @@index([placement, visible, priority])
+  @@index([placement, status, visible])
 }
 
 model CmsVersionHistory {

@@ -56,6 +56,18 @@ export function getDefaultContentForType(type: PageSectionType): AnySectionConte
         cta2Label: 'CUSTOMIZE',
         cta2Link: '/customize',
       };
+    case 'HERO_CAROUSEL':
+      return {
+        eyebrow: 'STUDIO EDITIONS',
+        heading: 'DAXUL HERO CAROUSEL',
+        autoplay: true,
+        interval: 5000,
+        showArrows: true,
+        showDots: true,
+        heightPreset: 'default',
+        selectedBannerIds: [],
+        fallbackToStatic: true,
+      };
     case 'BANNER':
       return {
         text: 'FREE SHIPPING ON ALL ORDERS ABOVE ₹1,999',
@@ -755,12 +767,26 @@ export async function deleteNavigationItem(id: string) {
 // Banners & Announcement Bar
 // ----------------------------------------------------
 
-export async function listBanners(options?: { placement?: string; activeOnly?: boolean }) {
+export async function listBanners(options?: {
+  placement?: string;
+  status?: string;
+  activeOnly?: boolean;
+}) {
   const now = new Date();
   const where: any = {};
-  if (options?.placement) where.placement = options.placement;
+  if (options?.placement) {
+    if (options.placement === 'HOMEPAGE_HERO') {
+      where.placement = { in: ['HOMEPAGE_HERO', 'HOMEPAGE_TOP'] };
+    } else {
+      where.placement = options.placement;
+    }
+  }
+  if (options?.status) {
+    where.status = options.status;
+  }
   if (options?.activeOnly) {
     where.visible = true;
+    where.status = 'PUBLISHED';
     where.OR = [
       { startDate: null, endDate: null },
       { startDate: { lte: now }, endDate: null },
@@ -780,54 +806,141 @@ export async function getActiveAnnouncementBanner() {
   return banners[0] || null;
 }
 
+export async function getActiveHeroBanners(options?: { preview?: boolean }) {
+  const now = new Date();
+  const where: any = {
+    placement: { in: ['HOMEPAGE_HERO', 'HOMEPAGE_TOP'] },
+  };
+
+  if (!options?.preview) {
+    where.visible = true;
+    where.status = 'PUBLISHED';
+    where.OR = [
+      { startDate: null, endDate: null },
+      { startDate: { lte: now }, endDate: null },
+      { startDate: null, endDate: { gte: now } },
+      { startDate: { lte: now }, endDate: { gte: now } },
+    ];
+  }
+
+  return prisma.banner.findMany({
+    where,
+    orderBy: [{ priority: 'desc' }, { createdAt: 'asc' }],
+  });
+}
+
 export async function upsertBanner(data: {
   id?: string;
   name: string;
   placement?: string;
   text: string;
+  eyebrow?: string | null;
+  headline?: string | null;
+  subheadline?: string | null;
+  body?: string | null;
   buttonText?: string | null;
   linkUrl?: string | null;
+  secondaryCtaLabel?: string | null;
+  secondaryCtaUrl?: string | null;
   desktopImage?: string | null;
   mobileImage?: string | null;
+  videoUrl?: string | null;
+  desktopImageMediaId?: string | null;
+  mobileImageMediaId?: string | null;
+  videoMediaId?: string | null;
+  textAlign?: string;
+  textMode?: string;
+  overlay?: boolean;
+  status?: string;
   startDate?: Date | null;
   endDate?: Date | null;
   priority?: number;
   visible?: boolean;
 }) {
+  const payload = {
+    name: data.name.trim(),
+    placement: data.placement || 'ANNOUNCEMENT',
+    text: (data.text || data.headline || data.name).trim(),
+    eyebrow: data.eyebrow !== undefined ? (data.eyebrow?.trim() || null) : undefined,
+    headline: data.headline !== undefined ? (data.headline?.trim() || null) : undefined,
+    subheadline: data.subheadline !== undefined ? (data.subheadline?.trim() || null) : undefined,
+    body: data.body !== undefined ? (data.body?.trim() || null) : undefined,
+    buttonText: data.buttonText !== undefined ? (data.buttonText?.trim() || null) : undefined,
+    linkUrl: data.linkUrl !== undefined ? (data.linkUrl?.trim() || null) : undefined,
+    secondaryCtaLabel: data.secondaryCtaLabel !== undefined ? (data.secondaryCtaLabel?.trim() || null) : undefined,
+    secondaryCtaUrl: data.secondaryCtaUrl !== undefined ? (data.secondaryCtaUrl?.trim() || null) : undefined,
+    desktopImage: data.desktopImage !== undefined ? (data.desktopImage?.trim() || null) : undefined,
+    mobileImage: data.mobileImage !== undefined ? (data.mobileImage?.trim() || null) : undefined,
+    videoUrl: data.videoUrl !== undefined ? (data.videoUrl?.trim() || null) : undefined,
+    desktopImageMediaId: data.desktopImageMediaId || null,
+    mobileImageMediaId: data.mobileImageMediaId || null,
+    videoMediaId: data.videoMediaId || null,
+    textAlign: data.textAlign || 'left',
+    textMode: data.textMode || 'dark',
+    overlay: !!data.overlay,
+    status: data.status || 'PUBLISHED',
+    startDate: data.startDate || null,
+    endDate: data.endDate || null,
+    priority: data.priority ?? 0,
+    visible: data.visible ?? true,
+  };
+
   if (data.id) {
     return prisma.banner.update({
       where: { id: data.id },
-      data: {
-        name: data.name.trim(),
-        placement: data.placement || 'ANNOUNCEMENT',
-        text: data.text.trim(),
-        buttonText: data.buttonText || null,
-        linkUrl: data.linkUrl || null,
-        desktopImage: data.desktopImage || null,
-        mobileImage: data.mobileImage || null,
-        startDate: data.startDate || null,
-        endDate: data.endDate || null,
-        priority: data.priority ?? 0,
-        visible: data.visible ?? true,
-      },
+      data: payload,
     });
   }
 
   return prisma.banner.create({
+    data: payload,
+  });
+}
+
+export async function duplicateBanner(id: string) {
+  const original = await prisma.banner.findUnique({ where: { id } });
+  if (!original) throw new Error('Banner not found');
+
+  return prisma.banner.create({
     data: {
-      name: data.name.trim(),
-      placement: data.placement || 'ANNOUNCEMENT',
-      text: data.text.trim(),
-      buttonText: data.buttonText || null,
-      linkUrl: data.linkUrl || null,
-      desktopImage: data.desktopImage || null,
-      mobileImage: data.mobileImage || null,
-      startDate: data.startDate || null,
-      endDate: data.endDate || null,
-      priority: data.priority ?? 0,
-      visible: data.visible ?? true,
+      name: `${original.name} (Copy)`,
+      placement: original.placement,
+      text: original.text,
+      eyebrow: original.eyebrow,
+      headline: original.headline,
+      subheadline: original.subheadline,
+      body: original.body,
+      buttonText: original.buttonText,
+      linkUrl: original.linkUrl,
+      secondaryCtaLabel: original.secondaryCtaLabel,
+      secondaryCtaUrl: original.secondaryCtaUrl,
+      desktopImage: original.desktopImage,
+      mobileImage: original.mobileImage,
+      videoUrl: original.videoUrl,
+      desktopImageMediaId: original.desktopImageMediaId,
+      mobileImageMediaId: original.mobileImageMediaId,
+      videoMediaId: original.videoMediaId,
+      textAlign: original.textAlign,
+      textMode: original.textMode,
+      overlay: original.overlay,
+      status: 'DRAFT',
+      startDate: original.startDate,
+      endDate: original.endDate,
+      priority: original.priority + 1,
+      visible: false,
     },
   });
+}
+
+export async function reorderBanners(bannerIds: string[]) {
+  return prisma.$transaction(
+    bannerIds.map((id, index) =>
+      prisma.banner.update({
+        where: { id },
+        data: { priority: (bannerIds.length - index) * 10 },
+      })
+    )
+  );
 }
 
 export async function deleteBanner(id: string) {

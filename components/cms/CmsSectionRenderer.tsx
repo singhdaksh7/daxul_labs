@@ -3,6 +3,7 @@
 import React from "react";
 import { PageSectionType } from "@/lib/cms/pageTypes";
 import HeroSection from "./HeroSection";
+import HeroCarouselSection from "./HeroCarouselSection";
 import BannerSection from "./BannerSection";
 import TextSection from "./TextSection";
 import ImageTextSection from "./ImageTextSection";
@@ -54,6 +55,8 @@ export default function CmsSectionRenderer({
   switch (type) {
     case "HERO":
       return <HeroSection content={content} />;
+    case "HERO_CAROUSEL":
+      return <HeroCarouselSection content={content} />;
     case "BANNER":
       return <BannerSection content={content} />;
     case "TEXT":
