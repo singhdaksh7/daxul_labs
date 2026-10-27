@@ -321,6 +321,13 @@ export async function getCmsPageBySlug(slug: string, options?: { preview?: boole
     },
   });
 
+  if (page && !options?.preview) {
+    page.sections = page.sections.map((s: any) => ({
+      ...s,
+      draftContent: s.publishedContent,
+    }));
+  }
+
   return page;
 }
 

@@ -70,15 +70,21 @@ export default async function DynamicCmsPage({
           </div>
         )}
 
-        {page.sections.map((section: any) => (
-          <CmsSectionRenderer
-            key={section.id}
-            section={section as any}
-            useDraft={isPreview}
-            products={products}
-            collections={collections}
-          />
-        ))}
+        {page.sections.map((section: any) => {
+          const sanitizedSection = {
+            ...section,
+            draftContent: isPreview ? section.draftContent : undefined,
+          };
+          return (
+            <CmsSectionRenderer
+              key={section.id}
+              section={sanitizedSection as any}
+              useDraft={isPreview}
+              products={products}
+              collections={collections}
+            />
+          );
+        })}
       </main>
       <Footer />
     </div>
