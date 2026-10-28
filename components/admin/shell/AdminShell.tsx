@@ -33,6 +33,9 @@ import {
   CreditCard,
   Clock,
   CheckSquare,
+  Star,
+  Bell,
+  HelpCircle,
 } from "lucide-react";
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ className?: string }>; view?: string };
@@ -48,6 +51,9 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { label: "Collections", href: "/admin/collections", icon: Layers },
       { label: "Customers", href: "/admin/customers", icon: Users },
       { label: "Coupons", href: "/admin/coupons", icon: Ticket },
+      { label: "Reviews", href: "/admin/reviews", icon: Star },
+      { label: "Product Q&A", href: "/admin/qa", icon: HelpCircle },
+      { label: "Back in Stock", href: "/admin/back-in-stock", icon: Bell },
     ],
   },
   {

@@ -17,6 +17,7 @@ import ProductCard from "@/components/ProductCard";
 import PincodeEstimator from "@/components/PincodeEstimator";
 import RecentlyViewedTray from "@/components/RecentlyViewedTray";
 import ProductReviewsSection from "@/components/ProductReviewsSection";
+import { ProductQASection } from "@/components/ProductQASection";
 import BackInStockModal from "@/components/BackInStockModal";
 import { ShoppingBag, Zap, Truck, Clock, ShieldCheck, Upload, Sliders, Heart, Bell } from "lucide-react";
 import { useWishlist } from "@/lib/useWishlist";
@@ -39,7 +40,7 @@ export default function ProductClient({
   const money = (n: number) => formatMoney(settings.currencySymbol, n);
 
   const [selectedImage, setSelectedImage] = useState(product.images[0] || "");
-  const [activeTab, setActiveTab] = useState<"story" | "specs" | "care" | "faq" | "reviews">("story");
+  const [activeTab, setActiveTab] = useState<"story" | "specs" | "care" | "faq" | "reviews" | "qa">("story");
 
   // groupId -> variantId (default: first in-stock variant of each group)
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>(() => {
@@ -539,6 +540,7 @@ export default function ProductClient({
               ["care", "Care Instructions", hasCare],
               ["faq", `FAQ (${product.faq.length})`, hasFaq],
               ["reviews", "Reviews", true],
+              ["qa", "Q&A", true],
             ] as const
           )
             .filter(([, , show]) => show)
@@ -602,6 +604,10 @@ export default function ProductClient({
 
           {activeTab === "reviews" && (
             <ProductReviewsSection productId={product.id} productName={product.name} />
+          )}
+
+          {activeTab === "qa" && (
+            <ProductQASection productId={product.id} productName={product.name} />
           )}
         </div>
       </div>
