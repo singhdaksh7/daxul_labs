@@ -7,13 +7,17 @@ import { useSiteSettings } from "@/lib/siteContext";
 import { formatMoney } from "@/lib/cartPricing";
 import { useQuote } from "@/lib/useQuote";
 import FreeShippingMeter from "./FreeShippingMeter";
-import { X, Trash2, Plus, Minus, ArrowRight, ShoppingBag } from "lucide-react";
+import { X, Trash2, Plus, Minus, ArrowRight, ShoppingBag, Bookmark } from "lucide-react";
 
 export default function CartDrawer() {
   const {
     cart,
+    savedForLater,
     removeFromCart,
     updateCartQuantity,
+    saveForLater,
+    moveToCart,
+    removeFromSavedForLater,
     isCartOpen,
     setIsCartOpen,
     couponCode,
@@ -144,24 +148,32 @@ export default function CartDrawer() {
                     )}
 
                     <div className="flex justify-between items-center mt-3 pt-2 border-t border-daxul-black/5">
-                      <div className="flex items-center gap-2 border border-daxul-black/15 rounded-lg px-2 py-0.5 bg-[#F3F0E9]">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 border border-daxul-black/15 rounded-lg px-2 py-0.5 bg-[#F3F0E9]">
+                          <button
+                            onClick={() => updateCartQuantity(item.id, -1)}
+                            disabled={item.quantity <= 1}
+                            className="text-[#71717A] hover:text-daxul-black disabled:opacity-30"
+                            aria-label="Decrease quantity"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="text-xs font-mono font-bold text-daxul-black min-w-[14px] text-center">
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={() => updateCartQuantity(item.id, 1)}
+                            className="text-[#71717A] hover:text-daxul-black"
+                            aria-label="Increase quantity"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
                         <button
-                          onClick={() => updateCartQuantity(item.id, -1)}
-                          disabled={item.quantity <= 1}
-                          className="text-[#71717A] hover:text-daxul-black disabled:opacity-30"
-                          aria-label="Decrease quantity"
+                          onClick={() => saveForLater(item.id)}
+                          className="text-[10px] text-[#71717A] hover:text-daxul-black underline"
                         >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="text-xs font-mono font-bold text-daxul-black min-w-[14px] text-center">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateCartQuantity(item.id, 1)}
-                          className="text-[#71717A] hover:text-daxul-black"
-                          aria-label="Increase quantity"
-                        >
-                          <Plus className="w-3 h-3" />
+                          Save for later
                         </button>
                       </div>
 
@@ -173,6 +185,64 @@ export default function CartDrawer() {
                 </div>
               </div>
             ))
+          )}
+
+          {/* Saved for Later Section */}
+          {savedForLater && savedForLater.length > 0 && (
+            <div className="pt-6 border-t border-daxul-black/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-daxul-black">
+                  <Bookmark className="w-3.5 h-3.5 text-daxul-black" />
+                  <span>Saved for Later ({savedForLater.length})</span>
+                </div>
+              </div>
+
+              <div className="space-y-2.5">
+                {savedForLater.map((sItem) => (
+                  <div
+                    key={sItem.id}
+                    className="p-3 bg-white/70 border border-daxul-black/10 rounded-xl flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {sItem.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={sItem.image}
+                          alt={sItem.name}
+                          className="w-10 h-10 object-cover rounded bg-[#EAE5DA] shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-[#EAE5DA] shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-daxul-black uppercase truncate text-[11px]">
+                          {sItem.name}
+                        </h4>
+                        <div className="text-[10px] text-[#71717A] font-mono">
+                          {money(sItem.unitPrice)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => moveToCart(sItem.id)}
+                        className="px-2.5 py-1 bg-daxul-black text-daxul-bone rounded text-[10px] font-bold uppercase tracking-wider hover:bg-daxul-black/85 transition-colors"
+                      >
+                        Move to Cart
+                      </button>
+                      <button
+                        onClick={() => removeFromSavedForLater(sItem.id)}
+                        className="text-[#71717A] hover:text-red-600 p-1"
+                        aria-label="Remove saved item"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
 

@@ -57,11 +57,15 @@ export interface CartItem {
 
 export interface CartContextType {
   cart: CartItem[];
+  savedForLater: CartItem[];
   cartCount: number;
   cartSubtotal: number;
   addToCart: (item: Omit<CartItem, 'id'>, openDrawer?: boolean) => void;
   removeFromCart: (itemId: string) => void;
   updateCartQuantity: (itemId: string, delta: number) => void;
+  saveForLater: (itemId: string) => void;
+  moveToCart: (itemId: string) => void;
+  removeFromSavedForLater: (itemId: string) => void;
   clearCart: () => void;
   couponCode: string;
   setCouponCode: (code: string) => void;
@@ -73,6 +77,7 @@ export interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const CART_KEY = 'daxul_cart_v3';
+const SAVED_KEY = 'daxul_saved_for_later_v1';
 const COUPON_KEY = 'daxul_coupon_v3';
 
 function lineSignature(i: Omit<CartItem, 'id' | 'quantity'>): string {
@@ -99,6 +104,7 @@ function sanitizeCart(raw: unknown): CartItem[] {
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [savedForLater, setSavedForLater] = useState<CartItem[]>([]);
   const [couponCode, setCouponCodeState] = useState('');
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -107,6 +113,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const raw = localStorage.getItem(CART_KEY);
       if (raw) setCart(sanitizeCart(JSON.parse(raw)));
+      const rawSaved = localStorage.getItem(SAVED_KEY);
+      if (rawSaved) setSavedForLater(sanitizeCart(JSON.parse(rawSaved)));
       const c = localStorage.getItem(COUPON_KEY);
       if (c) setCouponCodeState(c);
     } catch {
@@ -119,10 +127,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (!isHydrated) return;
     try {
       localStorage.setItem(CART_KEY, JSON.stringify(cart));
+      localStorage.setItem(SAVED_KEY, JSON.stringify(savedForLater));
     } catch {
       // storage unavailable
     }
-  }, [cart, isHydrated]);
+  }, [cart, savedForLater, isHydrated]);
 
   useEffect(() => {
     if (!isHydrated) return;
@@ -154,6 +163,30 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setCart((prev) => prev.filter((i) => i.id !== itemId));
   }, []);
 
+  const saveForLater = useCallback((itemId: string) => {
+    setCart((prevCart) => {
+      const target = prevCart.find((i) => i.id === itemId);
+      if (target) {
+        setSavedForLater((prevSaved) => [target, ...prevSaved.filter((s) => s.id !== target.id)]);
+      }
+      return prevCart.filter((i) => i.id !== itemId);
+    });
+  }, []);
+
+  const moveToCart = useCallback((itemId: string) => {
+    setSavedForLater((prevSaved) => {
+      const target = prevSaved.find((i) => i.id === itemId);
+      if (target) {
+        setCart((prevCart) => [...prevCart, target]);
+      }
+      return prevSaved.filter((i) => i.id !== itemId);
+    });
+  }, []);
+
+  const removeFromSavedForLater = useCallback((itemId: string) => {
+    setSavedForLater((prev) => prev.filter((i) => i.id !== itemId));
+  }, []);
+
   const updateCartQuantity = useCallback((itemId: string, delta: number) => {
     setCart((prev) =>
       prev
@@ -174,11 +207,15 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const value: CartContextType = {
     cart,
+    savedForLater,
     cartCount,
     cartSubtotal,
     addToCart,
     removeFromCart,
     updateCartQuantity,
+    saveForLater,
+    moveToCart,
+    removeFromSavedForLater,
     clearCart,
     couponCode,
     setCouponCode,

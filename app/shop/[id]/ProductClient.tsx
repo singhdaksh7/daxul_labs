@@ -17,7 +17,8 @@ import ProductCard from "@/components/ProductCard";
 import PincodeEstimator from "@/components/PincodeEstimator";
 import RecentlyViewedTray from "@/components/RecentlyViewedTray";
 import ProductReviewsSection from "@/components/ProductReviewsSection";
-import { ShoppingBag, Zap, Truck, Clock, ShieldCheck, Upload, Sliders, Heart } from "lucide-react";
+import BackInStockModal from "@/components/BackInStockModal";
+import { ShoppingBag, Zap, Truck, Clock, ShieldCheck, Upload, Sliders, Heart, Bell } from "lucide-react";
 import { useWishlist } from "@/lib/useWishlist";
 
 const inputCls =
@@ -56,6 +57,7 @@ export default function ProductClient({
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [backInStockOpen, setBackInStockOpen] = useState(false);
 
   const setValue = (fieldId: string, val: string) => {
     setValues((prev) => ({ ...prev, [fieldId]: val }));
@@ -474,26 +476,38 @@ export default function ProductClient({
             </div>
           )}
 
-          {/* Add to Cart Actions */}
-          <div className="space-y-3 pt-2">
-            <button
-              onClick={() => handleAdd(false)}
-              disabled={!canPurchase || anyUploading}
-              className="w-full flex items-center justify-center gap-2 bg-daxul-lime hover:bg-[#bcf82a] text-daxul-black font-bold py-4 rounded-lg text-xs uppercase tracking-widest border border-daxul-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <ShoppingBag className="w-4 h-4" />
-              <span>{canPurchase ? "Add To Cart" : "Sold Out"}</span>
-            </button>
+          {/* Add to Cart Actions or Back in Stock Alert */}
+          {!canPurchase ? (
+            <div className="pt-2">
+              <button
+                onClick={() => setBackInStockOpen(true)}
+                className="w-full flex items-center justify-center gap-2 bg-daxul-black text-daxul-bone font-bold py-4 rounded-lg text-xs uppercase tracking-widest hover:bg-daxul-black/85 transition-colors border border-daxul-black"
+              >
+                <Bell className="w-4 h-4 text-daxul-lime" />
+                <span>Notify Me When Available</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3 pt-2">
+              <button
+                onClick={() => handleAdd(false)}
+                disabled={!canPurchase || anyUploading}
+                className="w-full flex items-center justify-center gap-2 bg-daxul-lime hover:bg-[#bcf82a] text-daxul-black font-bold py-4 rounded-lg text-xs uppercase tracking-widest border border-daxul-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Add To Cart</span>
+              </button>
 
-            <button
-              onClick={() => handleAdd(true)}
-              disabled={!canPurchase || anyUploading}
-              className="w-full flex items-center justify-center gap-2 bg-transparent hover:bg-daxul-black/5 text-daxul-black font-semibold py-3.5 rounded-lg text-xs uppercase tracking-widest transition-colors border border-daxul-black/30 hover:border-daxul-black disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Zap className="w-4 h-4" />
-              <span>Buy It Now</span>
-            </button>
-          </div>
+              <button
+                onClick={() => handleAdd(true)}
+                disabled={!canPurchase || anyUploading}
+                className="w-full flex items-center justify-center gap-2 bg-transparent hover:bg-daxul-black/5 text-daxul-black font-semibold py-3.5 rounded-lg text-xs uppercase tracking-widest transition-colors border border-daxul-black/30 hover:border-daxul-black disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Zap className="w-4 h-4" />
+                <span>Buy It Now</span>
+              </button>
+            </div>
+          )}
 
           {/* Delivery & Pincode Checker */}
           <div className="pt-1">
@@ -613,6 +627,14 @@ export default function ProductClient({
 
       {/* Recently Viewed Objects Shelf */}
       <RecentlyViewedTray currentProductId={product.id} />
+
+      {/* Back In Stock Modal */}
+      <BackInStockModal
+        productId={product.id}
+        productName={product.name}
+        isOpen={backInStockOpen}
+        onClose={() => setBackInStockOpen(false)}
+      />
     </div>
   );
 }
