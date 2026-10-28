@@ -14,14 +14,14 @@ test.describe('18 Phase B: Conversion & Discovery', () => {
     await settle(page);
 
     // Open Search Overlay via Header search button
-    const searchTrigger = page.locator('button[aria-label="Search objects"], button:has-text("Search")').first();
+    const searchTrigger = page.locator('button[aria-label="Search Catalog"], button[aria-label="Search objects"]').first();
     if (await searchTrigger.isVisible()) {
       await searchTrigger.click();
     } else {
       await page.keyboard.press('Control+KeyK');
     }
 
-    const searchInput = page.locator('input[placeholder*="Search objects, SKUs, materials"]');
+    const searchInput = page.locator('input[aria-label="Search Catalog"], input[placeholder*="Search objects"]');
     await expect(searchInput).toBeVisible();
 
     // Type query
@@ -93,15 +93,15 @@ test.describe('18 Phase B: Conversion & Discovery', () => {
     await page.goto('/admin/reviews');
     await settle(page);
     await expect(page.locator('h1, h2, h3', { hasText: /Reviews/i }).first()).toBeVisible();
-    await expect(page.locator('text=Pending')).toBeVisible();
-    await expect(page.locator('text=Approved')).toBeVisible();
+    await expect(page.getByText('Pending Moderation').first()).toBeVisible();
+    await expect(page.getByText('Approved', { exact: false }).first()).toBeVisible();
   });
 
   test('Studio OS: Back-in-Stock desk', async ({ page }) => {
     await page.goto('/admin/back-in-stock');
     await settle(page);
     await expect(page.locator('h1, h2, h3', { hasText: /Back-in-Stock/i }).first()).toBeVisible();
-    await expect(page.locator('text=Pending Subscriptions')).toBeVisible();
+    await expect(page.locator('text=Pending Notifications').first()).toBeVisible();
   });
 
   test('Studio OS: Product Q&A desk', async ({ page }) => {
