@@ -59,7 +59,7 @@ export interface CartContextType {
   cart: CartItem[];
   cartCount: number;
   cartSubtotal: number;
-  addToCart: (item: Omit<CartItem, 'id'>) => void;
+  addToCart: (item: Omit<CartItem, 'id'>, openDrawer?: boolean) => void;
   removeFromCart: (itemId: string) => void;
   updateCartQuantity: (itemId: string, delta: number) => void;
   clearCart: () => void;
@@ -134,7 +134,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [couponCode, isHydrated]);
 
-  const addToCart = useCallback((item: Omit<CartItem, 'id'>) => {
+  const addToCart = useCallback((item: Omit<CartItem, 'id'>, openDrawer: boolean = true) => {
     setCart((prev) => {
       const sig = lineSignature(item);
       const existing = prev.find((l) => lineSignature(l) === sig);
@@ -143,7 +143,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
       return [...prev, { ...item, id: `cart-${Date.now()}-${Math.random().toString(36).slice(2, 6)}` }];
     });
-    setIsCartOpen(true);
+    if (openDrawer) {
+      setIsCartOpen(true);
+    } else {
+      setIsCartOpen(false);
+    }
   }, []);
 
   const removeFromCart = useCallback((itemId: string) => {

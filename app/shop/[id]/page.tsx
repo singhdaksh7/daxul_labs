@@ -30,7 +30,13 @@ export default async function ProductDetailPage({ params }: Params) {
   const product = await getProductByIdOrSlug(id);
   if (!product) notFound();
 
-  const related = await getRelatedProducts(product.id, product.category, 4);
+  const related = await getRelatedProducts(
+    product.id,
+    product.category,
+    4,
+    product.collectionId,
+    product.relatedProductIds || []
+  );
 
   return (
     <main className="min-h-screen bg-daxul-bone text-daxul-black flex flex-col font-sans">

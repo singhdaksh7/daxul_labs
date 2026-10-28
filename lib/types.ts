@@ -261,6 +261,7 @@ export interface StoreProduct extends Omit<Product, 'businessCosts'> {
   collectionId?: string;
   collectionSlug?: string;
   collectionName?: string;
+  relatedProductIds?: string[];
   variantGroups: StoreVariantGroup[];
   updatedAt?: string;
 }

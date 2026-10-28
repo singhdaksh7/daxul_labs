@@ -151,6 +151,7 @@ const productSelect = {
   dimensions: true,
   leadTimeText: true,
   collectionId: true,
+  relatedProductIds: true,
   updatedAt: true,
   collection: { select: { id: true, name: true, slug: true } },
   customFields: {
@@ -220,6 +221,7 @@ type ProductRow = {
   dimensions: string | null;
   leadTimeText: string | null;
   collectionId: string | null;
+  relatedProductIds: string[];
   updatedAt: Date;
   collection: { id: string; name: string; slug: string } | null;
   customFields: {
@@ -307,6 +309,7 @@ function mapProduct(p: ProductRow): StoreProduct {
     collectionId: p.collectionId ?? undefined,
     collectionSlug: p.collection?.slug,
     collectionName: p.collection?.name,
+    relatedProductIds: p.relatedProductIds ?? [],
     variantGroups,
     updatedAt: p.updatedAt.toISOString(),
   };
@@ -335,16 +338,97 @@ export const getProductByIdOrSlug = cache(async (idOrSlug: string): Promise<Stor
   }),
 );
 
-export const getRelatedProducts = cache(async (productId: string, category: string, limit = 4): Promise<StoreProduct[]> =>
-  safe('getRelatedProducts', [] as StoreProduct[], async () => {
-    const rows = await prisma.product.findMany({
-      where: { ...liveProductWhere, id: { not: productId }, category },
-      orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
-      take: limit,
-      select: productSelect,
-    });
-    return (rows as unknown as ProductRow[]).map(mapProduct);
-  }),
+export const getRelatedProducts = cache(
+  async (
+    productId: string,
+    category: string,
+    limit = 4,
+    collectionId?: string | null,
+    relatedProductIds: string[] = []
+  ): Promise<StoreProduct[]> =>
+    safe('getRelatedProducts', [] as StoreProduct[], async () => {
+      const collected: ProductRow[] = [];
+      const seenIds = new Set<string>([productId]);
+
+      // 1. Manually configured related IDs if available
+      if (relatedProductIds && relatedProductIds.length > 0) {
+        const manualRows = await prisma.product.findMany({
+          where: {
+            ...liveProductWhere,
+            id: { in: relatedProductIds, not: productId },
+          },
+          select: productSelect,
+          take: limit,
+        });
+        for (const row of manualRows as unknown as ProductRow[]) {
+          if (!seenIds.has(row.id)) {
+            seenIds.add(row.id);
+            collected.push(row);
+          }
+        }
+      }
+
+      // 2. Collection match
+      if (collected.length < limit && collectionId) {
+        const collectionRows = await prisma.product.findMany({
+          where: {
+            ...liveProductWhere,
+            id: { notIn: Array.from(seenIds) },
+            collectionId,
+          },
+          orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+          take: limit - collected.length,
+          select: productSelect,
+        });
+        for (const row of collectionRows as unknown as ProductRow[]) {
+          if (!seenIds.has(row.id)) {
+            seenIds.add(row.id);
+            collected.push(row);
+          }
+        }
+      }
+
+      // 3. Category match
+      if (collected.length < limit && category) {
+        const categoryRows = await prisma.product.findMany({
+          where: {
+            ...liveProductWhere,
+            id: { notIn: Array.from(seenIds) },
+            category,
+          },
+          orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+          take: limit - collected.length,
+          select: productSelect,
+        });
+        for (const row of categoryRows as unknown as ProductRow[]) {
+          if (!seenIds.has(row.id)) {
+            seenIds.add(row.id);
+            collected.push(row);
+          }
+        }
+      }
+
+      // 4. Featured fallback
+      if (collected.length < limit) {
+        const fallbackRows = await prisma.product.findMany({
+          where: {
+            ...liveProductWhere,
+            id: { notIn: Array.from(seenIds) },
+          },
+          orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+          take: limit - collected.length,
+          select: productSelect,
+        });
+        for (const row of fallbackRows as unknown as ProductRow[]) {
+          if (!seenIds.has(row.id)) {
+            seenIds.add(row.id);
+            collected.push(row);
+          }
+        }
+      }
+
+      return collected.map(mapProduct);
+    })
 );
 
 // ---------------------------------------------------------------------------

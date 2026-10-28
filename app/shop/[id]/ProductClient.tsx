@@ -151,22 +151,25 @@ export default function ProductClient({
       const v = (values[f.id] ?? "").trim();
       if (v) customizations[f.id] = v;
     }
-    addToCart({
-      productId: product.id,
-      slug: product.slug,
-      name: product.name,
-      image: product.images[0] || "",
-      quantity: 1,
-      basePrice: product.price,
-      variantSelections: selectedVariantObjects,
-      customizations,
-      customizationDetails: quote.details,
-      customizationFee: quote.fee,
-      unitPrice,
-      prepaidOnly: product.prepaidOnly,
-      codEnabled: product.codEnabled,
-      customizable: product.customizable,
-    });
+    addToCart(
+      {
+        productId: product.id,
+        slug: product.slug,
+        name: product.name,
+        image: product.images[0] || "",
+        quantity: 1,
+        basePrice: product.price,
+        variantSelections: selectedVariantObjects,
+        customizations,
+        customizationDetails: quote.details,
+        customizationFee: quote.fee,
+        unitPrice,
+        prepaidOnly: product.prepaidOnly,
+        codEnabled: product.codEnabled,
+        customizable: product.customizable,
+      },
+      !buyNow
+    );
     if (buyNow) router.push("/checkout");
   };
 
