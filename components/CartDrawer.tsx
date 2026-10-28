@@ -6,6 +6,7 @@ import { useCart } from "@/lib/storeContext";
 import { useSiteSettings } from "@/lib/siteContext";
 import { formatMoney } from "@/lib/cartPricing";
 import { useQuote } from "@/lib/useQuote";
+import FreeShippingMeter from "./FreeShippingMeter";
 import { X, Trash2, Plus, Minus, ArrowRight, ShoppingBag } from "lucide-react";
 
 export default function CartDrawer() {
@@ -70,21 +71,14 @@ export default function CartDrawer() {
           </button>
         </div>
 
-        {/* Free Shipping Note */}
-        {freeShippingThreshold > 0 && (
-          <div className="bg-[#EAE5DA] px-5 py-2.5 text-xs text-[#555550] border-b border-daxul-black/10 flex justify-between items-center">
-            <span>
-              {afterDiscount >= freeShippingThreshold ? (
-                <span className="font-semibold text-daxul-black">✓ Free shipping eligible</span>
-              ) : (
-                <span>Add {money(freeShippingThreshold - afterDiscount)} for free shipping</span>
-              )}
-            </span>
-            <span className="font-mono text-[10px] text-[#71717A]">
-              Free over {money(freeShippingThreshold)}
-            </span>
-          </div>
-        )}
+        {/* Dynamic Free Shipping Progress Meter */}
+        <FreeShippingMeter
+          subtotal={afterDiscount}
+          threshold={freeShippingThreshold}
+          currencySymbol={siteSettings.currencySymbol}
+          isExpressEligible={false}
+          variant="drawer"
+        />
 
         {/* Cart Item List */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">

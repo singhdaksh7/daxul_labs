@@ -15,6 +15,7 @@ import {
 import type { CustomFieldConfig, StoreProduct } from "@/lib/types";
 import ProductCard from "@/components/ProductCard";
 import PincodeEstimator from "@/components/PincodeEstimator";
+import RecentlyViewedTray from "@/components/RecentlyViewedTray";
 import { ShoppingBag, Zap, Truck, Clock, ShieldCheck, Upload, Sliders, Heart } from "lucide-react";
 import { useWishlist } from "@/lib/useWishlist";
 
@@ -603,6 +604,9 @@ export default function ProductClient({
           </div>
         </div>
       )}
+
+      {/* Recently Viewed Objects Shelf */}
+      <RecentlyViewedTray currentProductId={product.id} />
     </div>
   );
 }
