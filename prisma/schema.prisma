@@ -55,6 +55,9 @@ model User {
   addresses               Address[]
   orders                  Order[]
   wishlist                WishlistItem[]
+  reviews                 ProductReview[]
+  savedCart               UserSavedCart?
+  questions               ProductQuestion[]
   accounts                Account[]
   sessions                Session[]
   createdAt               DateTime       @default(now())
@@ -138,11 +141,15 @@ model Product {
   leadTimeText          String?
   collectionId          String?
   collection            Collection?   @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+  relatedProductIds     String[]      @default([])
   variantGroups         ProductVariantGroup[]
   inventoryAdjustments  InventoryAdjustment[]
   customFields          CustomField[]
   orderItems            OrderItem[]
   wishlistItems         WishlistItem[]
+  reviews               ProductReview[]
+  backInStockSubscriptions BackInStockSubscription[]
+  questions             ProductQuestion[]
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 }
@@ -803,5 +810,113 @@ model NotificationLog {
   @@index([recipient, createdAt])
   @@index([event, status])
 }
+
+model SearchQueryLog {
+  id           String   @id @default(cuid())
+  query        String
+  resultsCount Int      @default(0)
+  sessionId    String?
+  userId       String?
+  createdAt    DateTime @default(now())
+
+  @@index([query])
+  @@index([createdAt])
+}
+
+model ProductReview {
+  id                 String   @id @default(cuid())
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId             String?
+  user               User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  orderId            String?
+  authorName         String
+  authorEmail        String
+  rating             Int      @default(5)
+  title              String?
+  comment            String   @db.Text
+  isVerifiedPurchase Boolean  @default(false)
+  status             String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  adminResponse      String?  @db.Text
+  helpfulCount       Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([productId, status])
+  @@index([status, createdAt])
+  @@index([authorEmail])
+}
+
+model BackInStockSubscription {
+  id         String    @id @default(cuid())
+  productId  String
+  product    Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId  String?
+  email      String
+  phone      String?
+  status     String    @default("PENDING") // PENDING, NOTIFIED, CANCELLED
+  notifiedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([productId, variantId, email])
+  @@index([productId, status])
+  @@index([email])
+}
+
+model UserSavedCart {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cartItems     Json     @default("[]")
+  savedForLater Json     @default("[]")
+  updatedAt     DateTime @updatedAt
+}
+
+model ProductQuestion {
+  id          String          @id @default(cuid())
+  productId   String
+  product     Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  authorName  String
+  authorEmail String
+  question    String          @db.Text
+  status      String          @default("PENDING") // PENDING, APPROVED, REJECTED
+  answers     ProductAnswer[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([productId, status])
+  @@index([status, createdAt])
+}
+
+model ProductAnswer {
+  id         String          @id @default(cuid())
+  questionId String
+  question   ProductQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  authorName String
+  isOfficial Boolean         @default(true)
+  answer     String          @db.Text
+  createdAt  DateTime        @default(now())
+
+  @@index([questionId])
+}
+
+model FunnelEvent {
+  id        String   @id @default(cuid())
+  sessionId String
+  userId    String?
+  step      String   // VIEW_PRODUCT, ADD_TO_CART, VIEW_CART, BEGIN_CHECKOUT, ADD_SHIPPING, CHOOSE_PAYMENT, ORDER_COMPLETED
+  productId String?
+  orderId   String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([step, createdAt])
+  @@index([sessionId, step])
+  @@index([productId, step])
+  @@index([orderId])
+}
+
 
 

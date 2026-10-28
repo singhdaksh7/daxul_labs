@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useCallback } from "react";
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
+import ShopFilters, { type ActiveFilters, type FilterFacets } from "@/components/ShopFilters";
 import type { StoreProduct } from "@/lib/types";
+import { useSiteSettings } from "@/lib/siteContext";
 
 interface Props {
   products: StoreProduct[];
@@ -12,41 +14,228 @@ interface Props {
 }
 
 export default function ShopClient({ products, collections }: Props) {
-  const [selectedCollection, setSelectedCollection] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const settings = useSiteSettings();
 
-  const filtered = useMemo(() => {
-    let list = [...products];
-    if (selectedCollection !== "all") {
-      const col = collections.find((c) => c.slug === selectedCollection);
-      list = list.filter(
-        (p) =>
-          p.collectionSlug === selectedCollection ||
-          (col && p.category.toLowerCase() === col.name.toLowerCase())
-      );
+  // Parse active filters from URL query parameters (preserves browser history)
+  const filters: ActiveFilters = useMemo(() => {
+    const col = searchParams.get("collection") || "all";
+    const cat = searchParams.get("category") || "all";
+    const minP = searchParams.get("minPrice") ? Number(searchParams.get("minPrice")) : undefined;
+    const maxP = searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : undefined;
+    const inStock = searchParams.get("inStock") === "true";
+    const custom = searchParams.get("customizable") === "true";
+    const mat = searchParams.get("material") || "all";
+    const sortVal = (searchParams.get("sort") as ActiveFilters["sort"]) || "featured";
+    const q = searchParams.get("q") || "";
+
+    return {
+      collection: col,
+      category: cat,
+      minPrice: Number.isFinite(minP) ? minP : undefined,
+      maxPrice: Number.isFinite(maxP) ? maxP : undefined,
+      inStockOnly: inStock,
+      customizableOnly: custom,
+      material: mat,
+      sort: sortVal,
+      q,
+    };
+  }, [searchParams]);
+
+  // Derive real facets from available products
+  const facets: FilterFacets = useMemo(() => {
+    let minPrice = Infinity;
+    let maxPrice = -Infinity;
+    let inStockCount = 0;
+    let customizableCount = 0;
+    const materialSet = new Set<string>();
+    const categoryCountMap = new Map<string, number>();
+
+    const collectionCountMap = new Map<string, number>();
+    for (const c of collections) {
+      collectionCountMap.set(c.slug, 0);
     }
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
+
+    for (const p of products) {
+      if (p.price < minPrice) minPrice = p.price;
+      if (p.price > maxPrice) maxPrice = p.price;
+      if (p.inStock) inStockCount++;
+      if (p.customizable) customizableCount++;
+
+      if (p.category) {
+        categoryCountMap.set(p.category, (categoryCountMap.get(p.category) || 0) + 1);
+      }
+
+      if (p.collectionSlug && collectionCountMap.has(p.collectionSlug)) {
+        collectionCountMap.set(p.collectionSlug, (collectionCountMap.get(p.collectionSlug) || 0) + 1);
+      }
+
+      if (p.materials) {
+        p.materials
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .forEach((m) => materialSet.add(m));
+      }
+    }
+
+    const colFacets = collections.map((c) => ({
+      ...c,
+      count: collectionCountMap.get(c.slug) || 0,
+    }));
+
+    return {
+      collections: colFacets,
+      categories: Array.from(categoryCountMap.entries()).map(([name, count]) => ({ name, count })),
+      materials: Array.from(materialSet),
+      priceRange: {
+        min: minPrice === Infinity ? 0 : Math.floor(minPrice),
+        max: maxPrice === -Infinity ? 5000 : Math.ceil(maxPrice),
+      },
+      inStockCount,
+      customizableCount,
+      total: products.length,
+    };
+  }, [products, collections]);
+
+  // Synchronize state changes to URL query
+  const updateFilters = useCallback(
+    (next: Partial<ActiveFilters>) => {
+      const sp = new URLSearchParams(searchParams.toString());
+
+      if (next.collection !== undefined) {
+        if (next.collection === "all") sp.delete("collection");
+        else sp.set("collection", next.collection);
+      }
+      if (next.category !== undefined) {
+        if (next.category === "all") sp.delete("category");
+        else sp.set("category", next.category);
+      }
+      if (next.minPrice !== undefined) {
+        sp.set("minPrice", String(next.minPrice));
+      } else if ("minPrice" in next) {
+        sp.delete("minPrice");
+      }
+      if (next.maxPrice !== undefined) {
+        sp.set("maxPrice", String(next.maxPrice));
+      } else if ("maxPrice" in next) {
+        sp.delete("maxPrice");
+      }
+      if (next.inStockOnly !== undefined) {
+        if (next.inStockOnly) sp.set("inStock", "true");
+        else sp.delete("inStock");
+      }
+      if (next.customizableOnly !== undefined) {
+        if (next.customizableOnly) sp.set("customizable", "true");
+        else sp.delete("customizable");
+      }
+      if (next.material !== undefined) {
+        if (next.material === "all") sp.delete("material");
+        else sp.set("material", next.material);
+      }
+      if (next.sort !== undefined) {
+        if (next.sort === "featured") sp.delete("sort");
+        else sp.set("sort", next.sort);
+      }
+      if (next.q !== undefined) {
+        if (!next.q) sp.delete("q");
+        else sp.set("q", next.q);
+      }
+
+      const queryString = sp.toString();
+      router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+    },
+    [router, pathname, searchParams]
+  );
+
+  const resetFilters = useCallback(() => {
+    router.replace(pathname, { scroll: false });
+  }, [router, pathname]);
+
+  // Filter & sort products
+  const filteredProducts = useMemo(() => {
+    let list = [...products];
+
+    // Collection filter
+    if (filters.collection !== "all") {
+      list = list.filter((p) => p.collectionSlug === filters.collection);
+    }
+
+    // Category filter
+    if (filters.category !== "all") {
+      list = list.filter((p) => p.category.toLowerCase() === filters.category.toLowerCase());
+    }
+
+    // Keyword filter
+    if (filters.q) {
+      const q = filters.q.toLowerCase().trim();
       list = list.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
           p.description.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q)
+          p.category.toLowerCase().includes(q) ||
+          (p.sku && p.sku.toLowerCase().includes(q))
       );
     }
-    if (sortBy === "price-asc") list.sort((a, b) => a.price - b.price);
-    else if (sortBy === "price-desc") list.sort((a, b) => b.price - a.price);
+
+    // In-stock filter
+    if (filters.inStockOnly) {
+      list = list.filter((p) => p.inStock);
+    }
+
+    // Customizable filter
+    if (filters.customizableOnly) {
+      list = list.filter((p) => p.customizable);
+    }
+
+    // Material filter
+    if (filters.material !== "all") {
+      list = list.filter(
+        (p) => p.materials && p.materials.toLowerCase().includes(filters.material.toLowerCase())
+      );
+    }
+
+    // Price range
+    if (filters.minPrice !== undefined) {
+      list = list.filter((p) => p.price >= filters.minPrice!);
+    }
+    if (filters.maxPrice !== undefined) {
+      list = list.filter((p) => p.price <= filters.maxPrice!);
+    }
+
+    // Sort
+    if (filters.sort === "price-asc") {
+      list.sort((a, b) => a.price - b.price);
+    } else if (filters.sort === "price-desc") {
+      list.sort((a, b) => b.price - a.price);
+    } else if (filters.sort === "newest") {
+      list.sort((a, b) => {
+        const da = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const db = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return db - da;
+      });
+    }
+
     return list;
-  }, [products, collections, selectedCollection, searchQuery, sortBy]);
+  }, [products, filters]);
 
   return (
-    <div className="flex-1 py-10 sm:py-16 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 w-full">
+    <div className="flex-1 py-8 sm:py-14 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 w-full space-y-6">
       {/* Simple Header */}
-      <div className="pb-8 border-b border-daxul-black/10">
-        <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-daxul-black uppercase">
-          Shop
-        </h1>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pb-2">
+        <div>
+          <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-daxul-black uppercase">
+            Shop Catalog
+          </h1>
+          <p className="text-xs sm:text-sm text-[#71717A] font-mono uppercase tracking-wider mt-1">
+            Precision 3D Printed Objects & Lithophanes • Crafted on-demand
+          </p>
+        </div>
+        <div className="font-mono text-xs text-[#71717A] uppercase tracking-wider">
+          {filteredProducts.length} {filteredProducts.length === 1 ? "Object" : "Objects"}
+        </div>
       </div>
 
       {products.length === 0 ? (
@@ -59,78 +248,36 @@ export default function ShopClient({ products, collections }: Props) {
         </div>
       ) : (
         <>
-          {/* Filters, Search & Sort Bar */}
-          <div className="py-6 border-b border-daxul-black/10 flex flex-col md:flex-row gap-4 items-center justify-between">
-            {/* Category / Collection Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar w-full md:w-auto pb-1 md:pb-0">
-              <button
-                onClick={() => setSelectedCollection("all")}
-                className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap border ${
-                  selectedCollection === "all"
-                    ? "bg-daxul-black text-daxul-bone border-daxul-black"
-                    : "bg-transparent text-daxul-black/70 border-daxul-black/15 hover:border-daxul-black"
-                }`}
-              >
-                All ({products.length})
-              </button>
-              {collections.map((col) => (
+          {/* Dynamic Facet Filters & Sort */}
+          <ShopFilters
+            facets={facets}
+            filters={filters}
+            currencySymbol={settings.currencySymbol}
+            totalFilteredCount={filteredProducts.length}
+            onFilterChange={updateFilters}
+            onReset={resetFilters}
+          />
+
+          {/* Product Grid */}
+          <div className="py-6">
+            {filteredProducts.length === 0 ? (
+              <div className="text-center py-20 text-[#71717A] space-y-3 bg-white border border-daxul-black/10 rounded-2xl p-8">
+                <p className="text-sm font-semibold uppercase text-daxul-black">
+                  No objects found matching your filter criteria.
+                </p>
+                <p className="text-xs text-[#71717A]">
+                  Try expanding your price range or clearing selected tags.
+                </p>
                 <button
-                  key={col.id}
-                  onClick={() => setSelectedCollection(col.slug)}
-                  className={`px-4 py-2 rounded-full text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap border ${
-                    selectedCollection === col.slug
-                      ? "bg-daxul-black text-daxul-bone border-daxul-black"
-                      : "bg-transparent text-daxul-black/70 border-daxul-black/15 hover:border-daxul-black"
-                  }`}
+                  onClick={resetFilters}
+                  className="px-4 py-2 bg-daxul-black text-daxul-bone text-xs font-semibold uppercase tracking-wider rounded-lg hover:bg-daxul-black/85 transition-colors inline-block mt-2"
                 >
-                  {col.name}
-                </button>
-              ))}
-            </div>
-
-            {/* Search Input & Sort Dropdown */}
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <div className="relative flex-1 md:w-64">
-                <Search className="w-3.5 h-3.5 absolute left-3.5 top-3 text-[#71717A]" />
-                <input
-                  type="text"
-                  placeholder="SEARCH CATALOG..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white border border-daxul-black/15 focus:border-daxul-black rounded-lg pl-9 pr-3 py-2 text-xs text-daxul-black uppercase placeholder:text-[#71717A]/60 focus:outline-none"
-                />
-              </div>
-
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                className="bg-white border border-daxul-black/15 focus:border-daxul-black text-daxul-black text-xs font-semibold uppercase px-3 py-2 rounded-lg focus:outline-none cursor-pointer"
-              >
-                <option value="featured">Featured</option>
-                <option value="price-asc">Price: Low to High</option>
-                <option value="price-desc">Price: High to Low</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Product Grid (4 columns desktop, 2 columns mobile) */}
-          <div className="py-10">
-            {filtered.length === 0 ? (
-              <div className="text-center py-20 text-[#71717A] space-y-3">
-                <p className="text-sm font-semibold uppercase text-daxul-black">No objects found matching your filter.</p>
-                <button
-                  onClick={() => {
-                    setSelectedCollection("all");
-                    setSearchQuery("");
-                  }}
-                  className="text-daxul-black underline text-xs font-semibold uppercase"
-                >
-                  Reset Filters
+                  Reset All Filters
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
-                {filtered.map((product) => (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+                {filteredProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>

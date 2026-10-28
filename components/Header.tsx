@@ -7,12 +7,12 @@ import { useCart } from "@/lib/storeContext";
 import { useSite } from "@/lib/siteContext";
 import { useCms } from "@/lib/cmsContext";
 import AnnouncementBar from "./AnnouncementBar";
+import SearchOverlay from "./SearchOverlay";
 import { Search, User, ShoppingBag, Menu, X } from "lucide-react";
 
 export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const pathname = usePathname();
 
   const { cart, setIsCartOpen } = useCart();
@@ -21,13 +21,6 @@ export default function Header() {
 
   const totalCartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
 
-  const filteredSearchProducts = searchQuery.trim()
-    ? products.filter(
-        (p) =>
-          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.category.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : [];
 
   const defaultNavItems: { id?: string; label: string; url: string; isLab?: boolean; openNewTab?: boolean; children?: any[] }[] = [
     { label: "Shop", url: "/shop" },
@@ -217,78 +210,8 @@ export default function Header() {
         )}
       </header>
 
-      {/* Global Quick Search Overlay Modal */}
-      {searchOpen && (
-        <div className="fixed inset-0 z-[100] bg-daxul-black/40 backdrop-blur-sm flex flex-col p-4 sm:p-8 animate-in fade-in duration-150">
-          <div className="max-w-2xl w-full mx-auto bg-daxul-bone border border-daxul-black/20 p-6 sm:p-8 space-y-6 mt-8 sm:mt-16 daxul-card shadow-2xl">
-            <div className="flex justify-between items-center border-b border-daxul-black/10 pb-4">
-              <span className="font-mono text-xs uppercase tracking-[0.25em] text-[#71717A]">
-                Search Catalog
-              </span>
-              <button
-                onClick={() => setSearchOpen(false)}
-                className="p-1 text-daxul-black/60 hover:text-daxul-black transition-colors"
-                aria-label="Close search"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-4 top-3.5 text-[#71717A]" />
-              <input
-                type="text"
-                autoFocus
-                placeholder="Search shadow lamps, custom objects, altars..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-daxul-black/15 focus:border-daxul-black rounded-lg pl-11 pr-4 py-3 text-daxul-black text-sm tracking-wide placeholder:text-[#71717A]/60 focus:outline-none font-sans"
-              />
-            </div>
-
-            {/* Search Results */}
-            <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
-              {searchQuery && filteredSearchProducts.length === 0 ? (
-                <div className="text-center py-10 text-[#71717A] text-xs font-mono uppercase tracking-widest">
-                  No objects found matching &ldquo;{searchQuery}&rdquo;
-                </div>
-              ) : (
-                filteredSearchProducts.map((prod) => (
-                  <Link
-                    key={prod.id}
-                    href={prod.slug.startsWith("collections/") ? `/${prod.slug}` : `/shop/${prod.slug}`}
-                    onClick={() => setSearchOpen(false)}
-                    className="flex items-center gap-4 p-3 bg-white border border-daxul-black/10 hover:border-daxul-black transition-all daxul-card group"
-                  >
-                    {prod.image ? (
-                      <img
-                        src={prod.image}
-                        alt={prod.name}
-                        className="w-12 h-12 object-cover rounded bg-[#EBE7DF]"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded bg-[#EBE7DF]" />
-                    )}
-                    <div className="flex-1">
-                      <div className="font-mono text-[10px] text-[#71717A] uppercase tracking-wider">
-                        {prod.category}
-                      </div>
-                      <h4 className="text-sm font-semibold text-daxul-black group-hover:underline">
-                        {prod.name}
-                      </h4>
-                    </div>
-                    {prod.price > 0 && (
-                      <div className="font-sans text-xs font-semibold text-daxul-black">
-                        {siteSettings.currencySymbol}{prod.price}
-                      </div>
-                    )}
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Search V2 Global Overlay */}
+      <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 }
