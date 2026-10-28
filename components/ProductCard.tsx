@@ -2,34 +2,52 @@
 
 import React from "react";
 import Link from "next/link";
+import { Heart } from "lucide-react";
 import { useSiteSettings } from "@/lib/siteContext";
 import { formatMoney } from "@/lib/cartPricing";
 import type { StoreProduct } from "@/lib/types";
+import { useWishlist } from "@/lib/useWishlist";
 
 export default function ProductCard({ product }: { product: StoreProduct }) {
   const settings = useSiteSettings();
+  const { isWishlisted, toggleWishlist } = useWishlist();
+  const wishlisted = isWishlisted(product.id);
   const image = product.images[0];
 
   return (
     <div className="group flex flex-col justify-between transition-all duration-200">
       {/* Product Image Frame */}
-      <Link
-        href={`/shop/${product.slug}`}
-        className="relative aspect-square w-full bg-[#EAE5DA] border border-daxul-black/10 rounded-lg overflow-hidden block"
-      >
-        {image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={image}
-            alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-[10px] font-mono uppercase tracking-widest text-[#71717A]">
-            No image
-          </div>
-        )}
-      </Link>
+      <div className="relative aspect-square w-full bg-[#EAE5DA] border border-daxul-black/10 rounded-lg overflow-hidden block">
+        <Link
+          href={`/shop/${product.slug}`}
+          className="w-full h-full block"
+        >
+          {image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={image}
+              alt={product.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-[10px] font-mono uppercase tracking-widest text-[#71717A]">
+              No image
+            </div>
+          )}
+        </Link>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleWishlist(product.id);
+          }}
+          aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          className="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-white/80 hover:bg-white text-daxul-black/70 hover:text-daxul-black backdrop-blur-sm border border-daxul-black/10 transition-colors z-10"
+        >
+          <Heart className={`w-3.5 h-3.5 ${wishlisted ? "fill-red-500 text-red-500" : ""}`} />
+        </button>
+      </div>
 
       {/* Product Info */}
       <div className="pt-3.5 space-y-1">

@@ -6,6 +6,7 @@ import { createRazorpayOrder } from '@/lib/razorpay';
 import { computeCheckout, PricingError, type PricedLine } from '@/lib/pricing';
 import { maybeReleaseExpiredReservations } from '@/lib/reservations';
 import { reservationExpiry } from '@/lib/reservationPlan';
+import { sendOrderConfirmationEmail } from '@/lib/notifications/email';
 
 /**
  * Request payload (client prices are NEVER trusted; optional price hints are only
@@ -152,7 +153,13 @@ export async function POST(req: NextRequest) {
     const prefix = (settings.orderPrefix || 'DX').replace(/[^A-Za-z0-9]/g, '').toUpperCase() || 'DX';
     const orderNumber = `${prefix}-${Date.now().toString().slice(-6)}${Math.floor(Math.random() * 90 + 10)}`;
 
-    // 4. Transaction: create order, reserve stock (+ ledger), count coupon use
+    // 4. Check if a registered customer exists for this email
+    const existingUser = await prisma.user.findUnique({
+      where: { email: customer.email.toLowerCase() },
+      select: { id: true },
+    });
+
+    // 5. Transaction: create order, reserve stock (+ ledger), count coupon use, create job tickets
     const createdOrder = await prisma.$transaction(async (tx) => {
       if (appliedCouponId) {
         const res = await tx.coupon.updateMany({
@@ -198,9 +205,10 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      return tx.order.create({
+      const ord = await tx.order.create({
         data: {
           orderNumber,
+          userId: existingUser?.id ?? null,
           customerName: customer.name,
           customerEmail: customer.email.toLowerCase(),
           customerPhone: customer.phone,
@@ -241,9 +249,44 @@ export async function POST(req: NextRequest) {
         },
         include: { items: true },
       });
+
+      // Create Production Job Tickets for each manufactured order item
+      for (let idx = 0; idx < ord.items.length; idx++) {
+        const item = ord.items[idx];
+        const ticketNumber = `TKT-${ord.orderNumber}-${idx + 1}`;
+        await tx.productionJobTicket.create({
+          data: {
+            ticketNumber,
+            orderId: ord.id,
+            orderItemId: item.id,
+            material: item.selectedFinish || 'PLA Standard',
+            color: item.selectedColor || 'Carbon / Bone',
+            status: 'QUEUED',
+            qcChecklist: [
+              { item: 'Dimensional & Fit Tolerance', passed: false },
+              { item: 'Surface Layer Finish & Seams', passed: false },
+              { item: 'Light / LED Electronics Test', passed: false },
+              { item: 'Custom Inscription Accuracy', passed: false },
+              { item: 'Secure Anti-Shock Packaging', passed: false },
+            ],
+          },
+        });
+      }
+
+      return ord;
     });
 
-    // 5. Razorpay order for prepaid
+    // Mark any abandoned checkout session for this email as converted
+    try {
+      await prisma.abandonedCheckout.updateMany({
+        where: { email: customer.email.toLowerCase(), isRecovered: false },
+        data: { isRecovered: true, convertedOrderId: createdOrder.id },
+      });
+    } catch {
+      // non-fatal telemetry update
+    }
+
+    // 6. Razorpay order for prepaid
     let razorpayOrder: any = null;
     if (paymentMethod === 'prepaid' && finalTotal > 0) {
       try {
@@ -256,12 +299,28 @@ export async function POST(req: NextRequest) {
         await releaseOrder(createdOrder.id, cart.lines, appliedCouponId);
         throw gatewayErr;
       }
+    } else if (paymentMethod === 'cod') {
+      // For COD orders, dispatch confirmation email immediately
+      sendOrderConfirmationEmail({
+        orderNumber: createdOrder.orderNumber,
+        customerName: createdOrder.customerName,
+        customerEmail: createdOrder.customerEmail,
+        totalAmount: finalTotal,
+        paymentMethod: 'COD',
+        shippingFee,
+        items: createdOrder.items.map((it) => ({
+          productName: it.productName,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+        })),
+      }).catch((e) => console.error('Failed to send COD order confirmation:', e));
     }
 
     return NextResponse.json({
       success: true,
       orderId: createdOrder.id,
       orderNumber: createdOrder.orderNumber,
+      hasAccount: !!existingUser,
       totalAmount: finalTotal,
       subtotal: comp.subtotal,
       discountAmount,

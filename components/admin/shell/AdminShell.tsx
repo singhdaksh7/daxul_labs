@@ -30,6 +30,9 @@ import {
   Menu,
   X,
   ExternalLink,
+  CreditCard,
+  Clock,
+  CheckSquare,
 } from "lucide-react";
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ className?: string }>; view?: string };
@@ -39,6 +42,8 @@ const NAV: { section: string; items: NavItem[] }[] = [
     section: "Commerce",
     items: [
       { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
+      { label: "Abandoned Carts", href: "/admin/abandoned-checkouts", icon: Clock },
+      { label: "Payments", href: "/admin/payments", icon: CreditCard },
       { label: "Products", href: "/admin/products", icon: Package },
       { label: "Collections", href: "/admin/collections", icon: Layers },
       { label: "Customers", href: "/admin/customers", icon: Users },
@@ -48,6 +53,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "Production",
     items: [
+      { label: "Job Tickets & QC", href: "/admin/production", icon: CheckSquare },
       { label: "Manufacturing", href: "/admin/orders?view=manufacturing", icon: Factory, view: "manufacturing" },
       { label: "Customizations", href: "/admin/orders?view=customizations", icon: Sparkles, view: "customizations" },
       { label: "Inventory", href: "/admin/inventory", icon: Boxes },

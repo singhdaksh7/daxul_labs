@@ -4,6 +4,8 @@ import { prisma } from '@/lib/db';
 import { guardAdmin, parseBody, logAdminAction, serverError } from '@/lib/adminApi';
 import { getOrderDetail, listOrders } from '@/lib/adminQueries';
 import { maybeReleaseExpiredReservations } from '@/lib/reservations';
+import { createRazorpayRefund } from '@/lib/razorpay';
+import { sendDesignProofReadyEmail, sendOrderCancelledEmail } from '@/lib/notifications/email';
 import {
   ORDER_FILTERS,
   canCancel,
@@ -43,7 +45,13 @@ const note = z.string().trim().max(1000).optional();
 
 const patchSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('move'), orderId: id, direction: z.enum(['next', 'prev']), note }),
-  z.object({ action: z.literal('cancel'), orderId: id, note }),
+  z.object({
+    action: z.literal('cancel'),
+    orderId: id,
+    note,
+    restockInventory: z.boolean().default(true),
+    refundAmount: z.number().min(0).optional(),
+  }),
   z.object({
     action: z.literal('note'),
     orderId: id,
@@ -63,6 +71,26 @@ const patchSchema = z.discriminatedUnion('action', [
       .optional(),
   }),
   z.object({ action: z.literal('payment'), orderId: id, paymentStatus: z.enum(['paid', 'pending', 'failed']) }),
+  z.object({
+    action: z.literal('refund'),
+    orderId: id,
+    amount: z.number().positive(),
+    reason: z.string().trim().min(1).max(500),
+    triggerGatewayRefund: z.boolean().default(true),
+    restockInventory: z.boolean().default(false),
+  }),
+  z.object({
+    action: z.literal('designProof'),
+    orderId: id,
+    proofImageUrl: z.string().trim().min(1).max(1000),
+    designNotes: z.string().trim().max(1000).optional(),
+  }),
+  z.object({
+    action: z.literal('resolveCancellation'),
+    orderId: id,
+    decision: z.enum(['approved', 'rejected']),
+    note,
+  }),
 ]);
 
 export async function PATCH(req: NextRequest) {
@@ -73,7 +101,10 @@ export async function PATCH(req: NextRequest) {
   const body = parsed.data;
 
   try {
-    const order = await prisma.order.findUnique({ where: { id: body.orderId } });
+    const order = await prisma.order.findUnique({
+      where: { id: body.orderId },
+      include: { items: true },
+    });
     if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     const current = order.status as OrderStatus;
     const adminEmail = g.admin.email;
@@ -111,16 +142,213 @@ export async function PATCH(req: NextRequest) {
           return NextResponse.json({ error: `Cannot cancel an order that is ${current}` }, { status: 400 });
         }
         const ok = await prisma.$transaction(async (tx) => {
-          const r = await tx.order.updateMany({ where: { id: order.id, status: current }, data: { status: 'cancelled' } });
+          const r = await tx.order.updateMany({
+            where: { id: order.id, status: current },
+            data: { status: 'cancelled', cancelledAt: new Date(), cancellationReason: body.note || 'Admin cancelled' },
+          });
           if (r.count !== 1) return false;
           await tx.orderStatusHistory.create({
             data: { orderId: order.id, status: 'cancelled', adminEmail, note: body.note || `Cancelled from ${current}` },
           });
+
+          // Restock inventory if requested
+          if (body.restockInventory) {
+            for (const item of order.items) {
+              await tx.product.update({
+                where: { id: item.productId },
+                data: { stock: { increment: item.quantity } },
+              });
+              await tx.inventoryAdjustment.create({
+                data: {
+                  productId: item.productId,
+                  delta: item.quantity,
+                  quantityAfter: 0,
+                  reason: 'returned',
+                  note: `Restocked on order cancellation #${order.orderNumber}`,
+                  adminEmail,
+                },
+              });
+            }
+          }
           return true;
         });
         if (!ok) return NextResponse.json({ error: 'Order status changed concurrently; refresh and retry' }, { status: 409 });
         await logAdminAction(g.admin, 'ORDER_CANCEL', 'Order', order.id, { orderNumber: order.orderNumber, from: current });
+
+        sendOrderCancelledEmail({
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          customerEmail: order.customerEmail,
+          reason: body.note,
+          refundAmount: body.refundAmount,
+        }).catch((e) => console.error('Failed to send cancellation email:', e));
+
         return NextResponse.json({ success: true, status: 'cancelled' });
+      }
+
+      case 'refund': {
+        const remainingToRefund = Math.max(0, order.totalAmount - (order.refundedAmount || 0));
+        if (body.amount > remainingToRefund + 0.01) {
+          return NextResponse.json(
+            { error: `Refund amount ₹${body.amount} exceeds remaining refundable total ₹${remainingToRefund}` },
+            { status: 400 }
+          );
+        }
+
+        let gatewayRefundId: string | null = null;
+        if (body.triggerGatewayRefund && order.razorpayPaymentId) {
+          try {
+            const refundRes = await createRazorpayRefund(order.razorpayPaymentId, body.amount, {
+              orderId: order.id,
+              orderNumber: order.orderNumber,
+              reason: body.reason,
+            });
+            gatewayRefundId = refundRes.id;
+          } catch (refundErr: any) {
+            return NextResponse.json(
+              { error: `Payment gateway refund failed: ${refundErr.message || 'Unknown error'}` },
+              { status: 502 }
+            );
+          }
+        }
+
+        const newRefundedAmount = (order.refundedAmount || 0) + body.amount;
+        const refundStatus = newRefundedAmount >= order.totalAmount - 0.01 ? 'full' : 'partial';
+
+        await prisma.$transaction(async (tx) => {
+          await tx.orderRefund.create({
+            data: {
+              orderId: order.id,
+              amount: body.amount,
+              gatewayRefundId,
+              reason: body.reason,
+              status: 'completed',
+              adminEmail,
+              restockedInventory: body.restockInventory,
+            },
+          });
+
+          await tx.order.update({
+            where: { id: order.id },
+            data: {
+              refundedAmount: newRefundedAmount,
+              refundStatus,
+            },
+          });
+
+          await tx.orderStatusHistory.create({
+            data: {
+              orderId: order.id,
+              status: order.status,
+              adminEmail,
+              note: `Refund of ₹${body.amount.toFixed(2)} processed (${body.reason})${gatewayRefundId ? ` [Gateway ID: ${gatewayRefundId}]` : ''}`,
+            },
+          });
+
+          if (body.restockInventory) {
+            for (const item of order.items) {
+              await tx.product.update({
+                where: { id: item.productId },
+                data: { stock: { increment: item.quantity } },
+              });
+            }
+          }
+        });
+
+        await logAdminAction(g.admin, 'ORDER_REFUND', 'Order', order.id, {
+          orderNumber: order.orderNumber,
+          amount: body.amount,
+          gatewayRefundId,
+          reason: body.reason,
+        });
+
+        return NextResponse.json({
+          success: true,
+          refundedAmount: newRefundedAmount,
+          refundStatus,
+          gatewayRefundId,
+        });
+      }
+
+      case 'designProof': {
+        await prisma.$transaction(async (tx) => {
+          await tx.order.update({
+            where: { id: order.id },
+            data: {
+              proofImageUrl: body.proofImageUrl,
+              designStatus: 'proof_uploaded',
+              designNotes: body.designNotes || null,
+            },
+          });
+          await tx.orderStatusHistory.create({
+            data: {
+              orderId: order.id,
+              status: order.status,
+              adminEmail,
+              note: `Custom 3D model proof uploaded for customer review`,
+            },
+          });
+        });
+
+        sendDesignProofReadyEmail({
+          orderNumber: order.orderNumber,
+          customerName: order.customerName,
+          customerEmail: order.customerEmail,
+          proofUrl: body.proofImageUrl,
+        }).catch((e) => console.error('Failed to send design proof email:', e));
+
+        await logAdminAction(g.admin, 'DESIGN_PROOF_UPLOADED', 'Order', order.id, {
+          orderNumber: order.orderNumber,
+          proofImageUrl: body.proofImageUrl,
+        });
+
+        return NextResponse.json({ success: true, proofImageUrl: body.proofImageUrl, designStatus: 'proof_uploaded' });
+      }
+
+      case 'resolveCancellation': {
+        if (body.decision === 'approved') {
+          await prisma.$transaction(async (tx) => {
+            await tx.order.update({
+              where: { id: order.id },
+              data: {
+                status: 'cancelled',
+                cancellationRequested: false,
+                cancelledAt: new Date(),
+                cancellationReason: body.note || 'Cancellation request approved by admin',
+              },
+            });
+            await tx.orderStatusHistory.create({
+              data: {
+                orderId: order.id,
+                status: 'cancelled',
+                adminEmail,
+                note: `Cancellation request approved: ${body.note || 'No notes'}`,
+              },
+            });
+          });
+          sendOrderCancelledEmail({
+            orderNumber: order.orderNumber,
+            customerName: order.customerName,
+            customerEmail: order.customerEmail,
+            reason: body.note || 'Cancellation request approved',
+          }).catch((e) => console.error('Failed to send cancellation email:', e));
+        } else {
+          await prisma.$transaction(async (tx) => {
+            await tx.order.update({
+              where: { id: order.id },
+              data: { cancellationRequested: false },
+            });
+            await tx.orderStatusHistory.create({
+              data: {
+                orderId: order.id,
+                status: order.status,
+                adminEmail,
+                note: `Cancellation request rejected: ${body.note || 'No notes'}`,
+              },
+            });
+          });
+        }
+        return NextResponse.json({ success: true, decision: body.decision });
       }
 
       case 'note': {

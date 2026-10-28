@@ -87,6 +87,12 @@ export default function CheckoutPage() {
 
   const [shippingMethod, setShippingMethod] = useState<"STANDARD" | "EXPRESS" | null>(null);
 
+  // Account creation state after checkout
+  const [accountPassword, setAccountPassword] = useState("");
+  const [accountCreated, setAccountCreated] = useState(false);
+  const [accountCreating, setAccountCreating] = useState(false);
+  const [accountError, setAccountError] = useState<string | null>(null);
+
   // Server quote (debounced): the source of truth for every number on this page.
   const { quote, loading: quoteLoading, error: quoteError } = useQuote({
     cart,
@@ -140,6 +146,35 @@ export default function CheckoutPage() {
   const shownTotal = quote ? quote.total : estTotal;
   const couponQuote = quote?.coupon ?? null;
   const blockingIssue = quote && !quote.ok ? quote.issues[0]?.message ?? "Please review your cart." : null;
+
+  // Telemetry: Debounced abandoned checkout sync
+  useEffect(() => {
+    if (phase !== "form" || cart.length === 0) return;
+    if (!email.trim() && !phone.trim()) return;
+
+    const timer = setTimeout(() => {
+      fetch("/api/checkout/abandoned", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim() || undefined,
+          phone: phone.trim() || undefined,
+          name: name.trim() || undefined,
+          cartSubtotal: shownSubtotal,
+          checkoutStep: pincode ? "payment" : "address",
+          items: cart.map((i) => ({
+            name: i.name,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            image: i.image,
+            customizations: i.customizations,
+          })),
+        }),
+      }).catch(() => {});
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [email, phone, name, pincode, cart, shownSubtotal, phase]);
 
   const finalizePayment = async (o: OrderResult, resp: RazorpayHandlerResponse) => {
     try {
@@ -279,6 +314,33 @@ export default function CheckoutPage() {
     }
   };
 
+  const handleCreateAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accountPassword || !confirmedEmail || !order) return;
+    setAccountCreating(true);
+    setAccountError(null);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: confirmedEmail,
+          password: accountPassword,
+          name: confirmedName,
+          phone: phone,
+          orderNumber: order.orderNumber,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to create account");
+      setAccountCreated(true);
+    } catch (err: any) {
+      setAccountError(err.message || "Something went wrong creating your account");
+    } finally {
+      setAccountCreating(false);
+    }
+  };
+
   const inputCls =
     "w-full bg-white border border-daxul-black/15 focus:border-daxul-black rounded-lg p-3 text-xs text-daxul-black focus:outline-none";
 
@@ -360,6 +422,58 @@ export default function CheckoutPage() {
                 Track Order →
               </Link>
             </div>
+
+            {/* 1-Click Guest to Account Upgrade */}
+            {!accountCreated ? (
+              <div className="border border-daxul-black/15 bg-white p-5 rounded-xl text-left space-y-3">
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-daxul-black" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-daxul-black">
+                    Save Your Account & Order History
+                  </span>
+                </div>
+                <p className="text-[11px] text-[#71717A]">
+                  Create a password to view real-time 3D manufacturing progress, approve custom proofs, and manage saved addresses.
+                </p>
+                <form onSubmit={handleCreateAccount} className="flex gap-2">
+                  <input
+                    type="password"
+                    placeholder="Create a password (min 8 chars)"
+                    value={accountPassword}
+                    onChange={(e) => setAccountPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    className="flex-1 bg-[#F3F0E9] border border-daxul-black/15 rounded-lg px-3 py-2 text-xs text-daxul-black focus:outline-none focus:border-daxul-black"
+                  />
+                  <button
+                    type="submit"
+                    disabled={accountCreating}
+                    className="bg-daxul-black text-daxul-bone px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-daxul-black/85 transition-colors disabled:opacity-50 shrink-0"
+                  >
+                    {accountCreating ? "Creating..." : "Save Account"}
+                  </button>
+                </form>
+                {accountError && <p className="text-[11px] text-red-600 font-medium">{accountError}</p>}
+              </div>
+            ) : (
+              <div className="border border-green-300 bg-green-50 p-4 rounded-xl text-left text-xs text-green-900 flex items-center justify-between">
+                <div>
+                  <div className="font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-green-700" />
+                    Account created & order linked!
+                  </div>
+                  <div className="text-[11px] text-green-800 mt-0.5">
+                    Your shipping address and order #{order.orderNumber} are saved to your profile.
+                  </div>
+                </div>
+                <Link
+                  href="/account"
+                  className="bg-green-800 text-white px-3 py-1.5 rounded-lg text-xs font-semibold uppercase hover:bg-green-900 shrink-0 ml-3"
+                >
+                  Go to Account →
+                </Link>
+              </div>
+            )}
           </div>
         ) : phase === "awaiting_payment" && order ? (
           <div className="bg-white border border-daxul-black/15 p-8 sm:p-12 rounded-xl max-w-xl mx-auto text-center space-y-5 shadow-sm">
@@ -533,6 +647,30 @@ export default function CheckoutPage() {
                 <h3 className="text-sm font-bold uppercase text-daxul-black border-b border-daxul-black/10 pb-3">
                   Order Summary ({cart.reduce((a, i) => a + i.quantity, 0)} Objects)
                 </h3>
+
+                {/* Free Shipping Progress */}
+                {settings.freeShippingThreshold > 0 && (
+                  <div className="bg-[#F3F0E9] p-3 rounded-lg border border-daxul-black/10 text-xs">
+                    {shownSubtotal >= settings.freeShippingThreshold ? (
+                      <span className="text-green-700 font-semibold flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4" /> You unlocked FREE shipping!
+                      </span>
+                    ) : (
+                      <div>
+                        <div className="flex justify-between text-[11px] mb-1.5 font-mono">
+                          <span>Free shipping progress</span>
+                          <span className="font-bold">{money(settings.freeShippingThreshold - shownSubtotal)} away</span>
+                        </div>
+                        <div className="w-full bg-daxul-black/10 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="bg-daxul-lime h-full rounded-full transition-all duration-300"
+                            style={{ width: `${Math.min(100, Math.round((shownSubtotal / settings.freeShippingThreshold) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                   {cart.map((item) => (

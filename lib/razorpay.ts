@@ -74,3 +74,32 @@ export function verifyRazorpayWebhookSignature(
 
   return expectedSignature === webhookSignature;
 }
+
+export async function createRazorpayRefund(
+  paymentId: string,
+  amountInRupees?: number,
+  notes?: Record<string, string>
+) {
+  const razorpay = getRazorpayClient();
+  const options: Record<string, unknown> = {
+    notes: notes || {},
+  };
+  if (amountInRupees && amountInRupees > 0) {
+    options.amount = Math.round(amountInRupees * 100);
+  }
+
+  if (!razorpay) {
+    return {
+      id: `rfnd_sandbox_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      payment_id: paymentId,
+      amount: options.amount || 0,
+      currency: 'INR',
+      status: 'processed',
+      notes: notes || {},
+      created_at: Math.floor(Date.now() / 1000),
+    };
+  }
+
+  return await (razorpay.payments as any).refund(paymentId, options);
+}
+

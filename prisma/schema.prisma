@@ -43,17 +43,22 @@ enum PaymentStatus {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  passwordHash  String?
-  role          Role      @default(CUSTOMER)
-  accounts      Account[]
-  sessions      Session[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                      String         @id @default(cuid())
+  name                    String?
+  email                   String         @unique
+  emailVerified           DateTime?
+  image                   String?
+  passwordHash            String?
+  role                    Role           @default(CUSTOMER)
+  phone                   String?
+  notificationPreferences Json?
+  addresses               Address[]
+  orders                  Order[]
+  wishlist                WishlistItem[]
+  accounts                Account[]
+  sessions                Session[]
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
 }
 
 model Account {
@@ -123,6 +128,8 @@ model Product {
   customizable          Boolean       @default(false)
   trackInventory        Boolean       @default(true)
   lowStockThreshold     Int           @default(3)
+  damagedStock          Int           @default(0)
+  incomingStock         Int           @default(0)
   seoTitle              String?
   seoDescription        String?       @db.Text
   ogImage               String?
@@ -135,6 +142,7 @@ model Product {
   inventoryAdjustments  InventoryAdjustment[]
   customFields          CustomField[]
   orderItems            OrderItem[]
+  wishlistItems         WishlistItem[]
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 }
@@ -172,6 +180,8 @@ model ProductVariant {
   sku             String?
   priceAdjustment Float               @default(0)
   stock           Int?                // null = not tracked separately
+  damagedStock    Int                 @default(0)
+  incomingStock   Int                 @default(0)
   isActive        Boolean             @default(true)
   sortOrder       Int                 @default(0)
   group           ProductVariantGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
@@ -227,6 +237,8 @@ model Order {
   orderNumber        String              @unique
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
+  userId             String?
+  customer           User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
   customerName       String
   customerEmail      String
   customerPhone      String
@@ -255,8 +267,24 @@ model Order {
   stockReleasedAt    DateTime?
   internalNotes      String?             @db.Text
   couponCode         String?
-  items              OrderItem[]
-  statusHistory      OrderStatusHistory[]
+  cancellationReason     String?
+  cancelledAt            DateTime?
+  cancellationRequested  Boolean             @default(false)
+  cancellationRequestedAt DateTime?
+  refundStatus           String?             @default("none")
+  refundedAmount         Float               @default(0)
+  designProofUrl         String?
+  designStatus           String              @default("pending") // pending, proof_uploaded, approved, changes_requested
+  designNotes            String?
+  designFeedback         String?
+  items                  OrderItem[]
+  statusHistory          OrderStatusHistory[]
+  jobTickets             ProductionJobTicket[]
+  refunds                OrderRefund[]
+  paymentTransactions    PaymentTransaction[]
+
+  @@index([customerEmail])
+  @@index([userId])
 }
 
 model OrderItem {
@@ -276,6 +304,7 @@ model OrderItem {
   productSku      String?
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product         Product  @relation(fields: [productId], references: [id])
+  jobTickets      ProductionJobTicket[]
 }
 
 model OrderStatusHistory {
@@ -628,4 +657,151 @@ model CmsVersionHistory {
 
   @@index([pageId, createdAt])
 }
+
+model Address {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String
+  street    String
+  city      String
+  state     String
+  pincode   String
+  country   String   @default("India")
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+model OrderRefund {
+  id                 String   @id @default(cuid())
+  orderId            String
+  order              Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount             Float
+  gatewayRefundId    String?
+  reason             String
+  status             String   @default("completed") // pending, completed, failed
+  adminEmail         String
+  restockedInventory Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model PaymentTransaction {
+  id               String   @id @default(cuid())
+  orderId          String
+  order            Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  gateway          String   @default("razorpay")
+  gatewayOrderId   String?
+  gatewayPaymentId String?
+  amount           Float
+  currency         String   @default("INR")
+  status           String   // created, authorized, captured, failed, refunded
+  method           String?  // card, upi, netbanking, wallet
+  errorDescription String?
+  isReconciled     Boolean  @default(false)
+  metadata         Json?
+  createdAt        DateTime @default(now())
+
+  @@index([orderId])
+  @@index([gatewayPaymentId])
+  @@index([gatewayOrderId])
+  @@index([status])
+}
+
+model AbandonedCheckout {
+  id               String    @id @default(cuid())
+  cartId           String    @unique
+  email            String?
+  phone            String?
+  customerName     String?
+  items            Json
+  subtotal         Float     @default(0)
+  estimatedTotal   Float     @default(0)
+  currentStep      String    @default("contact") // contact, shipping, payment
+  convertedOrderId String?
+  isRecovered      Boolean   @default(false)
+  recoveryToken    String    @unique @default(cuid())
+  lastNotifiedAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([isRecovered, createdAt])
+  @@index([email])
+}
+
+model Printer {
+  id        String                @id @default(cuid())
+  name      String
+  model     String
+  status    String                @default("AVAILABLE") // AVAILABLE, PRINTING, MAINTENANCE, OFFLINE
+  location  String?
+  notes     String?
+  tickets   ProductionJobTicket[]
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+}
+
+model ProductionJobTicket {
+  id                       String    @id @default(cuid())
+  ticketNumber             String    @unique
+  orderId                  String
+  order                    Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItemId              String
+  orderItem                OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  printerId                String?
+  printer                  Printer?  @relation(fields: [printerId], references: [id], onDelete: SetNull)
+  material                 String?
+  color                    String?
+  designFileUrl            String?
+  estimatedGrams           Float?
+  actualGrams              Float?
+  estimatedDurationMinutes Int?
+  actualDurationMinutes    Int?
+  operator                 String?
+  status                   String    @default("QUEUED") // QUEUED, PRINTING, FAILED, REPRINT, FINISHING, QC, DONE
+  failureReason            String?
+  qcChecklist              Json?
+  qcNotes                  String?   @db.Text
+  startTime                DateTime?
+  endTime                  DateTime?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  @@index([status])
+  @@index([orderId])
+}
+
+model NotificationLog {
+  id         String   @id @default(cuid())
+  channel    String   // email, whatsapp, sms
+  recipient  String
+  event      String   // order_confirmed, payment_received, proof_ready, shipped, etc.
+  template   String
+  status     String   // sent, failed, simulated
+  providerId String?
+  error      String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([recipient, createdAt])
+  @@index([event, status])
+}
+
 

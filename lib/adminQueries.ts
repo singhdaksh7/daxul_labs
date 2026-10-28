@@ -218,8 +218,13 @@ export async function getOrderDetail(id: string) {
     where: { id },
     omit: { razorpaySignature: true },
     include: {
-      items: true,
+      items: {
+        include: {
+          jobTickets: true,
+        },
+      },
       statusHistory: { orderBy: { timestamp: 'asc' } },
+      refunds: { orderBy: { createdAt: 'desc' } },
     },
   });
   if (!order) return null;

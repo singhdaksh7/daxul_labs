@@ -47,10 +47,18 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         title={`Order ${order.orderNumber}`}
         subtitle={`Placed ${fmtDate(order.createdAt)}`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <StatusBadge status={order.status} />
             <Badge kind={order.paymentStatus} />
             <Badge kind={order.paymentMethod} />
+            <a
+              href={`/api/orders/${order.orderNumber}/invoice`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-1.5 text-xs font-semibold text-[#F3F0E9] hover:border-[#C8FF35] hover:text-[#C8FF35] transition-colors"
+            >
+              Tax Invoice ↗
+            </a>
           </div>
         }
       />
@@ -77,6 +85,21 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                       <p className="text-xs text-gray-400">
                         {[it.selectedFinish && `Finish: ${it.selectedFinish}`, it.selectedColor && `Color: ${it.selectedColor}`, it.selectedSize && `Size: ${it.selectedSize}`, ...variants.map((v) => `${v.group}: ${v.variant}`)].filter(Boolean).join(" · ")}
                       </p>
+                    )}
+                    {(it as any).jobTickets && (it as any).jobTickets.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <span className="text-[10px] uppercase font-mono text-gray-500">3D Job Tickets:</span>
+                        {(it as any).jobTickets.map((t: any) => (
+                          <Link
+                            key={t.id}
+                            href="/admin/production"
+                            className="inline-flex items-center gap-1.5 rounded bg-[#18181A] px-2 py-0.5 text-[10px] font-mono text-[#C8FF35] hover:underline border border-[#242426]"
+                          >
+                            <span>#{t.ticketNumber}</span>
+                            <span className="text-gray-400">({t.status})</span>
+                          </Link>
+                        ))}
+                      </div>
                     )}
                     {customs.length > 0 && (
                       <div className="space-y-2 rounded-lg bg-[#0B0B0C] p-3">
@@ -138,6 +161,25 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <Panel title="Internal notes"><p className="whitespace-pre-wrap text-sm text-gray-300">{order.internalNotes || <span className="text-gray-600">None</span>}</p></Panel>
             <Panel title="Production / QC notes"><p className="whitespace-pre-wrap text-sm text-gray-300">{order.qcNotes || <span className="text-gray-600">None</span>}</p></Panel>
           </div>
+
+          {(order as any).refunds && (order as any).refunds.length > 0 && (
+            <Panel title="Refund History">
+              <div className="divide-y divide-[#242426] text-xs">
+                {(order as any).refunds.map((ref: any) => (
+                  <div key={ref.id} className="py-2.5 flex justify-between items-center">
+                    <div>
+                      <div className="font-semibold text-amber-300">{inr(ref.amount)} — {ref.status}</div>
+                      <div className="text-[11px] text-gray-500">Reason: {ref.reason || "N/A"} · By: {ref.adminEmail}</div>
+                      {ref.gatewayRefundId && <div className="text-[10px] font-mono text-gray-600">ID: {ref.gatewayRefundId}</div>}
+                    </div>
+                    <div className="text-right text-[10px] text-gray-500 font-mono">
+                      {fmtDate(ref.createdAt)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          )}
         </div>
 
         <div className="space-y-6">
@@ -182,11 +224,20 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <Panel title="Actions">
             <OrderActions
               orderId={order.id}
+              orderNumber={order.orderNumber}
               status={order.status as OrderStatus}
               paymentStatus={order.paymentStatus}
+              paymentMethod={order.paymentMethod}
               courierName={order.courierName ?? ""}
               trackingNumber={order.trackingNumber ?? ""}
               trackingUrl={order.trackingUrl ?? ""}
+              cancellationRequested={order.cancellationRequested}
+              cancellationReason={order.cancellationReason}
+              designStatus={order.designStatus}
+              designProofUrl={order.designProofUrl}
+              designFeedback={order.designFeedback}
+              totalAmount={order.totalAmount}
+              refundedAmount={order.refundedAmount}
             />
           </Panel>
         </div>

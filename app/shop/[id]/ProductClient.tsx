@@ -14,7 +14,9 @@ import {
 } from "@/lib/cartPricing";
 import type { CustomFieldConfig, StoreProduct } from "@/lib/types";
 import ProductCard from "@/components/ProductCard";
-import { ShoppingBag, Zap, Truck, Clock, ShieldCheck, Upload, Sliders } from "lucide-react";
+import PincodeEstimator from "@/components/PincodeEstimator";
+import { ShoppingBag, Zap, Truck, Clock, ShieldCheck, Upload, Sliders, Heart } from "lucide-react";
+import { useWishlist } from "@/lib/useWishlist";
 
 const inputCls =
   "w-full bg-white border border-daxul-black/15 focus:border-daxul-black rounded-lg px-3 py-2 text-xs text-daxul-black placeholder:text-[#71717A]/60 focus:outline-none";
@@ -28,6 +30,8 @@ export default function ProductClient({
 }) {
   const router = useRouter();
   const { addToCart } = useCart();
+  const { isWishlisted, toggleWishlist } = useWishlist();
+  const wishlisted = isWishlisted(product.id);
   const settings = useSiteSettings();
   const money = (n: number) => formatMoney(settings.currencySymbol, n);
 
@@ -328,12 +332,28 @@ export default function ProductClient({
         {/* Purchase Panel (40% Desktop) */}
         <div className="lg:col-span-5 space-y-6">
           <div>
-            <span className="text-xs font-mono text-[#71717A] uppercase tracking-[0.25em] block mb-1">
-              {product.category}
-            </span>
-            <h1 className="text-3xl sm:text-4xl font-bold uppercase tracking-tight text-daxul-black mb-2">
-              {product.name}
-            </h1>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="text-xs font-mono text-[#71717A] uppercase tracking-[0.25em] block mb-1">
+                  {product.category}
+                </span>
+                <h1 className="text-3xl sm:text-4xl font-bold uppercase tracking-tight text-daxul-black mb-2">
+                  {product.name}
+                </h1>
+              </div>
+              <button
+                type="button"
+                onClick={() => toggleWishlist(product.id)}
+                aria-label={wishlisted ? "Remove from saved items" : "Save to wishlist"}
+                className={`p-2.5 rounded-full border transition-colors shrink-0 ${
+                  wishlisted
+                    ? "bg-red-50 border-red-200 text-red-500"
+                    : "bg-white border-daxul-black/15 text-daxul-black/60 hover:text-daxul-black hover:border-daxul-black"
+                }`}
+              >
+                <Heart className={`w-5 h-5 ${wishlisted ? "fill-red-500 text-red-500" : ""}`} />
+              </button>
+            </div>
             {product.subtitle && <p className="text-sm text-[#555550] font-medium mb-1">{product.subtitle}</p>}
             <p className="text-xs sm:text-sm text-[#555550] leading-relaxed">{product.description}</p>
           </div>
@@ -468,6 +488,11 @@ export default function ProductClient({
               <Zap className="w-4 h-4" />
               <span>Buy It Now</span>
             </button>
+          </div>
+
+          {/* Delivery & Pincode Checker */}
+          <div className="pt-1">
+            <PincodeEstimator productionTimeDays={product.productionTimeDays} />
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-4 text-[11px] text-[#71717A] border-t border-daxul-black/10">
