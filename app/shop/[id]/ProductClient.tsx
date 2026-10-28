@@ -16,6 +16,7 @@ import type { CustomFieldConfig, StoreProduct } from "@/lib/types";
 import ProductCard from "@/components/ProductCard";
 import PincodeEstimator from "@/components/PincodeEstimator";
 import RecentlyViewedTray from "@/components/RecentlyViewedTray";
+import ProductReviewsSection from "@/components/ProductReviewsSection";
 import { ShoppingBag, Zap, Truck, Clock, ShieldCheck, Upload, Sliders, Heart } from "lucide-react";
 import { useWishlist } from "@/lib/useWishlist";
 
@@ -37,7 +38,7 @@ export default function ProductClient({
   const money = (n: number) => formatMoney(settings.currencySymbol, n);
 
   const [selectedImage, setSelectedImage] = useState(product.images[0] || "");
-  const [activeTab, setActiveTab] = useState<"story" | "specs" | "care" | "faq">("story");
+  const [activeTab, setActiveTab] = useState<"story" | "specs" | "care" | "faq" | "reviews">("story");
 
   // groupId -> variantId (default: first in-stock variant of each group)
   const [selectedVariants, setSelectedVariants] = useState<Record<string, string>>(() => {
@@ -523,6 +524,7 @@ export default function ProductClient({
               ["specs", `Specifications (${product.specs.length})`, hasSpecs],
               ["care", "Care Instructions", hasCare],
               ["faq", `FAQ (${product.faq.length})`, hasFaq],
+              ["reviews", "Reviews", true],
             ] as const
           )
             .filter(([, , show]) => show)
@@ -582,6 +584,10 @@ export default function ProductClient({
                 </div>
               ))}
             </div>
+          )}
+
+          {activeTab === "reviews" && (
+            <ProductReviewsSection productId={product.id} productName={product.name} />
           )}
         </div>
       </div>
