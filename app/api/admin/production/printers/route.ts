@@ -63,3 +63,19 @@ export async function POST(req: NextRequest) {
     return serverError(err, 'Admin POST Printer Error:');
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  const g = await guardAdmin();
+  if (!g.ok) return g.response;
+
+  const id = req.nextUrl.searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'Printer id required' }, { status: 400 });
+
+  try {
+    await prisma.printer.delete({ where: { id } });
+    await logAdminAction(g.admin, 'PRINTER_DELETED', 'Printer', id, {});
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    return serverError(err, 'Admin DELETE Printer Error:');
+  }
+}
