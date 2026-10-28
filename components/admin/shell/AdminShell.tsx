@@ -36,6 +36,8 @@ import {
   Star,
   Bell,
   HelpCircle,
+  ArrowDownRight,
+  TrendingUp,
 } from "lucide-react";
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ className?: string }>; view?: string };
@@ -81,7 +83,9 @@ const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "System",
     items: [
-      { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+      { label: "Analytics Overview", href: "/admin/analytics", icon: BarChart3 },
+      { label: "Conversion Funnel", href: "/admin/analytics/funnel", icon: ArrowDownRight },
+      { label: "Product Conversion", href: "/admin/analytics/products", icon: TrendingUp },
       { label: "Store Settings", href: "/admin/settings", icon: Settings },
       { label: "Theme", href: "/admin/theme", icon: Palette },
       { label: "Audit Logs", href: "/admin/audit", icon: ClipboardList },

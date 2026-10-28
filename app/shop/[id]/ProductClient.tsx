@@ -19,6 +19,7 @@ import RecentlyViewedTray from "@/components/RecentlyViewedTray";
 import ProductReviewsSection from "@/components/ProductReviewsSection";
 import { ProductQASection } from "@/components/ProductQASection";
 import BackInStockModal from "@/components/BackInStockModal";
+import { useTrackProductView, trackFunnel } from "@/lib/useFunnelTracker";
 import { ShoppingBag, Zap, Truck, Clock, ShieldCheck, Upload, Sliders, Heart, Bell } from "lucide-react";
 import { useWishlist } from "@/lib/useWishlist";
 
@@ -38,6 +39,8 @@ export default function ProductClient({
   const wishlisted = isWishlisted(product.id);
   const settings = useSiteSettings();
   const money = (n: number) => formatMoney(settings.currencySymbol, n);
+
+  useTrackProductView(product.id);
 
   const [selectedImage, setSelectedImage] = useState(product.images[0] || "");
   const [activeTab, setActiveTab] = useState<"story" | "specs" | "care" | "faq" | "reviews" | "qa">("story");
@@ -175,6 +178,7 @@ export default function ProductClient({
       },
       !buyNow
     );
+    trackFunnel("ADD_TO_CART", { productId: product.id });
     if (buyNow) router.push("/checkout");
   };
 

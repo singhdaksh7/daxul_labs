@@ -8,6 +8,7 @@ import { useCart } from "@/lib/storeContext";
 import { useSiteSettings } from "@/lib/siteContext";
 import { formatMoney } from "@/lib/cartPricing";
 import { useQuote } from "@/lib/useQuote";
+import { trackFunnel } from "@/lib/useFunnelTracker";
 import { CreditCard, Truck, ShieldCheck, CheckCircle2, Lock, Printer } from "lucide-react";
 
 /* Minimal typing for Razorpay's hosted checkout script. */
@@ -136,6 +137,10 @@ export default function CheckoutPage() {
     }
   }, [quote, shippingMethod]);
 
+  useEffect(() => {
+    trackFunnel("BEGIN_CHECKOUT");
+  }, []);
+
   const estShipping = subtotal >= settings.freeShippingThreshold ? 0 : settings.standardShippingFee;
   const estCodFee = paymentMethod === "cod" && settings.codFeeEnabled ? settings.codFee : 0;
   const estTotal = subtotal + estShipping + estCodFee;
@@ -192,6 +197,7 @@ export default function CheckoutPage() {
       setOrder(o);
       setPhase("confirmed");
       clearCart();
+      trackFunnel("ORDER_COMPLETED", { orderId: o.orderId || o.orderNumber });
     } catch (e) {
       setOrder(o);
       setPhase("awaiting_payment");
@@ -264,6 +270,8 @@ export default function CheckoutPage() {
       },
     };
 
+    trackFunnel("CHOOSE_PAYMENT", { metadata: { paymentMethod } });
+
     try {
       const res = await fetch("/api/razorpay/create-order", {
         method: "POST",
@@ -296,6 +304,7 @@ export default function CheckoutPage() {
       if (paymentMethod === "cod" || !o.razorpayOrderId) {
         setPhase("confirmed");
         clearCart();
+        trackFunnel("ORDER_COMPLETED", { orderId: o.orderId || o.orderNumber });
       } else {
         setPhase("awaiting_payment");
         await openRazorpay(o);

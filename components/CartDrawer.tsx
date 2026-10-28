@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/storeContext";
 import { useSiteSettings } from "@/lib/siteContext";
 import { formatMoney } from "@/lib/cartPricing";
 import { useQuote } from "@/lib/useQuote";
 import FreeShippingMeter from "./FreeShippingMeter";
+import { trackFunnel } from "@/lib/useFunnelTracker";
 import { X, Trash2, Plus, Minus, ArrowRight, ShoppingBag, Bookmark } from "lucide-react";
 
 export default function CartDrawer() {
@@ -30,6 +31,12 @@ export default function CartDrawer() {
 
   // Server quote (debounced)
   const { quote, loading: quoteLoading } = useQuote({ cart, couponCode, enabled: isCartOpen });
+
+  useEffect(() => {
+    if (isCartOpen) {
+      trackFunnel("VIEW_CART");
+    }
+  }, [isCartOpen]);
 
   if (!isCartOpen) return null;
 
@@ -300,7 +307,10 @@ export default function CartDrawer() {
             {/* Checkout CTA */}
             <Link
               href="/checkout"
-              onClick={() => setIsCartOpen(false)}
+              onClick={() => {
+                trackFunnel("BEGIN_CHECKOUT");
+                setIsCartOpen(false);
+              }}
               className="w-full flex items-center justify-center gap-2 bg-daxul-lime hover:bg-[#bcf82a] text-daxul-black font-semibold py-4 rounded-lg text-xs uppercase tracking-widest border border-daxul-black transition-colors"
             >
               <span>Proceed to Checkout</span>
