@@ -64,27 +64,34 @@ export async function POST(
       );
     }
 
-    // Deduplicate: Upsert subscription
-    await prisma.backInStockSubscription.upsert({
+    // Deduplicate: Check existing subscription and upsert cleanly
+    const existing = await prisma.backInStockSubscription.findFirst({
       where: {
-        productId_variantId_email: {
-          productId,
-          variantId: variantId || null as any,
-          email: cleanEmail,
-        },
-      },
-      update: {
-        status: "PENDING",
-        phone: phone || undefined,
-      },
-      create: {
         productId,
         variantId: variantId || null,
-        email: cleanEmail,
-        phone: phone || null,
-        status: "PENDING",
+        email: { equals: cleanEmail, mode: "insensitive" },
       },
     });
+
+    if (existing) {
+      await prisma.backInStockSubscription.update({
+        where: { id: existing.id },
+        data: {
+          status: "PENDING",
+          phone: phone || existing.phone,
+        },
+      });
+    } else {
+      await prisma.backInStockSubscription.create({
+        data: {
+          productId,
+          variantId: variantId || null,
+          email: cleanEmail,
+          phone: phone || null,
+          status: "PENDING",
+        },
+      });
+    }
 
     return NextResponse.json({
       ok: true,
