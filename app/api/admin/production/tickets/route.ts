@@ -73,7 +73,7 @@ const updateTicketSchema = z.object({
   actualGrams: z.number().min(0).optional(),
   actualDurationMinutes: z.number().int().min(0).optional(),
   failureReason: z.string().trim().max(500).optional(),
-  qcChecklist: z.array(z.record(z.string(), z.unknown())).optional(),
+  qcChecklist: z.union([z.array(z.record(z.string(), z.unknown())), z.record(z.string(), z.unknown())]).optional(),
   qcNotes: z.string().trim().max(1000).optional(),
 });
 

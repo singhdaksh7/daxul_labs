@@ -82,13 +82,18 @@ const patchSchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('designProof'),
     orderId: id,
-    proofImageUrl: z.string().trim().min(1).max(1000),
+    proofImageUrl: z.string().trim().min(1).max(1000).optional(),
+    designProofUrl: z.string().trim().min(1).max(1000).optional(),
     designNotes: z.string().trim().max(1000).optional(),
+    notes: z.string().trim().max(1000).optional(),
+    designStatus: z.string().optional(),
   }),
   z.object({
     action: z.literal('resolveCancellation'),
     orderId: id,
-    decision: z.enum(['approved', 'rejected']),
+    decision: z.enum(['approved', 'rejected']).optional(),
+    approved: z.boolean().optional(),
+    reason: z.string().trim().max(500).optional(),
     note,
   }),
 ]);
@@ -271,13 +276,18 @@ export async function PATCH(req: NextRequest) {
       }
 
       case 'designProof': {
+        const finalProofUrl = body.proofImageUrl || body.designProofUrl || '';
+        const finalNotes = body.designNotes || body.notes || null;
+        const finalStatus = body.designStatus || 'proof_uploaded';
+
         await prisma.$transaction(async (tx) => {
           await tx.order.update({
             where: { id: order.id },
             data: {
-              proofImageUrl: body.proofImageUrl,
-              designStatus: 'proof_uploaded',
-              designNotes: body.designNotes || null,
+              proofImageUrl: finalProofUrl,
+              designProofUrl: finalProofUrl,
+              designStatus: finalStatus,
+              designNotes: finalNotes,
             },
           });
           await tx.orderStatusHistory.create({
@@ -290,23 +300,28 @@ export async function PATCH(req: NextRequest) {
           });
         });
 
-        sendDesignProofReadyEmail({
-          orderNumber: order.orderNumber,
-          customerName: order.customerName,
-          customerEmail: order.customerEmail,
-          proofUrl: body.proofImageUrl,
-        }).catch((e) => console.error('Failed to send design proof email:', e));
+        if (finalProofUrl) {
+          sendDesignProofReadyEmail({
+            orderNumber: order.orderNumber,
+            customerName: order.customerName,
+            customerEmail: order.customerEmail,
+            proofUrl: finalProofUrl,
+          }).catch((e) => console.error('Failed to send design proof email:', e));
+        }
 
         await logAdminAction(g.admin, 'DESIGN_PROOF_UPLOADED', 'Order', order.id, {
           orderNumber: order.orderNumber,
-          proofImageUrl: body.proofImageUrl,
+          proofImageUrl: finalProofUrl,
         });
 
-        return NextResponse.json({ success: true, proofImageUrl: body.proofImageUrl, designStatus: 'proof_uploaded' });
+        return NextResponse.json({ success: true, proofImageUrl: finalProofUrl, designStatus: finalStatus });
       }
 
       case 'resolveCancellation': {
-        if (body.decision === 'approved') {
+        const isApproved = body.decision === 'approved' || body.approved === true;
+        const reasonText = body.note || body.reason || (isApproved ? 'Cancellation request approved by admin' : 'Cancellation request rejected');
+
+        if (isApproved) {
           await prisma.$transaction(async (tx) => {
             await tx.order.update({
               where: { id: order.id },
@@ -314,7 +329,7 @@ export async function PATCH(req: NextRequest) {
                 status: 'cancelled',
                 cancellationRequested: false,
                 cancelledAt: new Date(),
-                cancellationReason: body.note || 'Cancellation request approved by admin',
+                cancellationReason: reasonText,
               },
             });
             await tx.orderStatusHistory.create({
@@ -322,7 +337,7 @@ export async function PATCH(req: NextRequest) {
                 orderId: order.id,
                 status: 'cancelled',
                 adminEmail,
-                note: `Cancellation request approved: ${body.note || 'No notes'}`,
+                note: `Cancellation request approved: ${reasonText}`,
               },
             });
           });
@@ -330,7 +345,7 @@ export async function PATCH(req: NextRequest) {
             orderNumber: order.orderNumber,
             customerName: order.customerName,
             customerEmail: order.customerEmail,
-            reason: body.note || 'Cancellation request approved',
+            reason: reasonText,
           }).catch((e) => console.error('Failed to send cancellation email:', e));
         } else {
           await prisma.$transaction(async (tx) => {
@@ -343,12 +358,12 @@ export async function PATCH(req: NextRequest) {
                 orderId: order.id,
                 status: order.status,
                 adminEmail,
-                note: `Cancellation request rejected: ${body.note || 'No notes'}`,
+                note: `Cancellation request rejected: ${reasonText}`,
               },
             });
           });
         }
-        return NextResponse.json({ success: true, decision: body.decision });
+        return NextResponse.json({ success: true, cancellationResolved: true, isApproved });
       }
 
       case 'note': {

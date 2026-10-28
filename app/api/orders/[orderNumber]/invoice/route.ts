@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { getAuthSession } from '@/lib/auth';
+import { getAuthSession, requireAdminSession } from '@/lib/auth';
 
 function phonesMatch(a: string, b: string): boolean {
   const da = a.replace(/\D/g, '');
@@ -29,13 +29,13 @@ export async function GET(
     }
 
     // Access control:
-    // 1. Admin session
+    // 1. Admin session (verified from DB via requireAdminSession)
     // 2. Matching Customer session
     // 3. Guest verification query parameter: ?verify=emailOrPhone
-    const session = await getAuthSession();
+    const adminCheck = await requireAdminSession();
+    const isAdmin = adminCheck.authorized;
+    const session = adminCheck.session;
     const sessionEmail = session?.user?.email?.toLowerCase();
-    const sessionRole = (session?.user as any)?.role;
-    const isAdmin = sessionRole === 'ADMIN' || sessionRole === 'SUPER_ADMIN';
 
     const verifyQuery = req.nextUrl.searchParams.get('verify')?.trim() || '';
     const isOwner =
@@ -46,9 +46,10 @@ export async function GET(
         phonesMatch(verifyQuery, order.customerPhone));
 
     if (!isAdmin && !isOwner && !isVerifiedGuest) {
+      const status = sessionEmail ? 403 : 401;
       return new NextResponse(
         'Unauthorized: You do not have permission to view this invoice.',
-        { status: 403 }
+        { status }
       );
     }
 

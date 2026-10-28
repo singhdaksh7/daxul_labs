@@ -16,6 +16,23 @@ const addressSchema = z.object({
   isDefault: z.boolean().default(false),
 });
 
+export async function GET() {
+  const session = await getAuthSession();
+  const sessionUser = session?.user as { id?: string } | undefined;
+  if (!session || !sessionUser?.id) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 });
+
+  try {
+    const addresses = await prisma.address.findMany({
+      where: { userId: sessionUser.id },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'desc' }],
+    });
+    return NextResponse.json({ success: true, addresses });
+  } catch (err) {
+    console.error('Fetch Addresses Error:', err);
+    return NextResponse.json({ error: 'Failed to fetch addresses' }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   const session = await getAuthSession();
   const sessionUser = session?.user as { id?: string } | undefined;
