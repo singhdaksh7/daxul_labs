@@ -63,6 +63,18 @@ const NAV: { section: string; items: NavItem[] }[] = [
     ],
   },
   {
+    section: "Partner Finance",
+    items: [
+      { label: "Finance Dashboard", href: "/admin/finance", icon: LayoutDashboard },
+      { label: "Expenses", href: "/admin/finance/expenses", icon: CreditCard },
+      { label: "EMIs & Schedules", href: "/admin/finance/emi", icon: Clock },
+      { label: "Partner Accounts", href: "/admin/finance/partners", icon: Users },
+      { label: "Settlements", href: "/admin/finance/settlements", icon: CheckSquare },
+      { label: "Capital & Advances", href: "/admin/finance/capital", icon: Coins },
+      { label: "Profit Periods", href: "/admin/finance/periods", icon: TrendingUp },
+    ],
+  },
+  {
     section: "Finance & Staff",
     items: [
       { label: "Margin Analytics", href: "/admin/analytics/margins", icon: TrendingUp },
