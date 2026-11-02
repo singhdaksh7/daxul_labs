@@ -74,7 +74,6 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { label: "Settlements", href: "/admin/finance/settlements", icon: CheckSquare },
       { label: "Capital & Advances", href: "/admin/finance/capital", icon: Coins },
       { label: "Profit Periods", href: "/admin/finance/periods", icon: TrendingUp },
-      { label: "Clean-up (test data)", href: "/admin/finance/cleanup", icon: Settings },
     ],
   },
   {
