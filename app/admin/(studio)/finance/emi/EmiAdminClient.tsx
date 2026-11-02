@@ -300,6 +300,12 @@ function ScheduleCard({ sch, onChanged, onError }: { sch: any; onChanged: () => 
   const payerName = sch.expense?.paidByPartner?.displayName;
   const nextDue = installments.find((i) => i.status !== "PAID");
 
+  const cancelEmi = () => {
+    const reason = window.prompt("Why are you cancelling this EMI? (e.g. entered by mistake). Anything it already posted to the partner accounts is reversed.");
+    if (!reason || reason.trim().length < 3) return;
+    call("cancel", `/api/admin/finance/expenses/${sch.expenseId}`, { method: "DELETE", body: JSON.stringify({ reason: reason.trim() }) });
+  };
+
   const call = async (key: string, url: string, init: RequestInit) => {
     setBusy(key);
     onError(null);
@@ -341,9 +347,14 @@ function ScheduleCard({ sch, onChanged, onError }: { sch: any; onChanged: () => 
         <div className="h-1.5 overflow-hidden rounded-full bg-[#242426]"><div className="h-full bg-[#C8FF35]" style={{ width: `${(paidCount / total) * 100}%` }} /></div>
       </div>
 
-      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="mt-5 text-[12px] font-semibold text-[#C8FF35] hover:underline">
-        {open ? "Hide installments" : "Show installments & partner payments"}
-      </button>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="text-[12px] font-semibold text-[#C8FF35] hover:underline">
+          {open ? "Hide installments" : "Show installments & partner payments"}
+        </button>
+        <button type="button" onClick={cancelEmi} disabled={busy === "cancel"} className="cancel-emi-btn rounded-lg border border-red-500/40 px-3 py-1.5 text-[11px] font-semibold text-red-300 hover:bg-red-500/10 disabled:opacity-50">
+          {busy === "cancel" ? "Cancelling…" : "Cancel EMI"}
+        </button>
+      </div>
 
       {open && (
         <div className="mt-5 space-y-4">

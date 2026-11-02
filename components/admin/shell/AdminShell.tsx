@@ -27,6 +27,8 @@ import {
   Palette,
   ClipboardList,
   LogOut,
+  ChevronDown,
+  Truck,
   Menu,
   X,
   ExternalLink,
@@ -72,6 +74,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { label: "Settlements", href: "/admin/finance/settlements", icon: CheckSquare },
       { label: "Capital & Advances", href: "/admin/finance/capital", icon: Coins },
       { label: "Profit Periods", href: "/admin/finance/periods", icon: TrendingUp },
+      { label: "Clean-up (test data)", href: "/admin/finance/cleanup", icon: Settings },
     ],
   },
   {
@@ -157,6 +160,8 @@ export default function AdminShell({
   const pathname = usePathname() || "/admin";
   const view = useSearchParams()?.get("view") ?? null;
   const [open, setOpen] = useState(false);
+  // Accordion: only the section holding the current page is open by default; the rest stay collapsed.
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setOpen(false);
@@ -170,6 +175,14 @@ export default function AdminShell({
     return pathname === base || pathname.startsWith(base + "/");
   };
 
+  const sectionHasActive = (group: (typeof NAV)[number]) => group.items.some((i) => isActive(i));
+
+  useEffect(() => {
+    const current = NAV.find((g) => g.items.some((i) => isActive(i)));
+    if (current) setExpanded((prev) => ({ ...prev, [current.section]: true }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, view]);
+
   const sidebar = (
     <div className="flex h-full flex-col bg-[#0B0B0C]">
       <div className="flex h-16 shrink-0 items-center justify-between border-b border-[#242426] px-5">
@@ -181,34 +194,52 @@ export default function AdminShell({
           <X className="h-5 w-5" />
         </button>
       </div>
-      <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5" aria-label="Admin">
-        {NAV.map((group) => (
-          <div key={group.section}>
-            <p className="px-3 pb-2 text-[10px] font-bold uppercase tracking-[0.25em] text-gray-500">{group.section}</p>
-            <ul className="space-y-0.5">
-              {group.items.map((item) => {
-                const active = isActive(item);
-                const Icon = item.icon;
-                return (
-                  <li key={item.label}>
-                    <Link
-                      href={item.href}
-                      aria-current={active ? "page" : undefined}
-                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                        active
-                          ? "bg-[#C8FF35] text-[#0B0B0C]"
-                          : "text-gray-300 hover:bg-[#242426] hover:text-white"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
+      <nav className="admin-scroll flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Admin">
+        {NAV.map((group) => {
+          const isOpen = !!expanded[group.section];
+          const hasActive = sectionHasActive(group);
+          const panelId = `nav-${group.section.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`;
+          return (
+            <div key={group.section}>
+              <button
+                type="button"
+                onClick={() => setExpanded((prev) => ({ ...prev, [group.section]: !isOpen }))}
+                aria-expanded={isOpen}
+                aria-controls={panelId}
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.2em] transition-colors hover:bg-[#151515] ${
+                  hasActive ? "text-[#C8FF35]" : "text-gray-400 hover:text-gray-200"
+                }`}
+              >
+                {group.section}
+                <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+              </button>
+              {isOpen && (
+                <ul id={panelId} className="mb-2 mt-0.5 space-y-0.5 border-l border-[#242426] pl-2 ml-3">
+                  {group.items.map((item) => {
+                    const active = isActive(item);
+                    const Icon = item.icon;
+                    return (
+                      <li key={item.label}>
+                        <Link
+                          href={item.href}
+                          aria-current={active ? "page" : undefined}
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                            active
+                              ? "bg-[#C8FF35] text-[#0B0B0C]"
+                              : "text-gray-300 hover:bg-[#242426] hover:text-white"
+                          }`}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          {item.label}
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          );
+        })}
       </nav>
       <div className="shrink-0 space-y-3 border-t border-[#242426] p-4">
         <Link href="/" target="_blank" className="flex items-center gap-2 text-xs text-gray-400 hover:text-[#C8FF35]">

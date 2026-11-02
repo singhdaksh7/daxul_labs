@@ -200,6 +200,9 @@ export async function markEmiInstallmentPaid(params: { installmentId: string; pa
     });
     if (!inst) throw new EmiActionError('Installment not found', 404);
     if (inst.status === 'PAID') throw new EmiActionError('This installment is already marked as paid');
+    if (inst.status === 'CANCELLED' || inst.emiSchedule.expense.status === 'CANCELLED') {
+      throw new EmiActionError('This EMI has been cancelled');
+    }
 
     const expense = inst.emiSchedule.expense;
     const payerId = expense.paidByPartnerId;

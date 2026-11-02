@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
         },
       },
       emiObligations: {
-        where: { status: { not: 'PAID' } },
+        where: { status: { notIn: ['PAID', 'CANCELLED'] } },
         include: {
           emiInstallment: {
             include: {
@@ -71,6 +71,7 @@ export async function GET(req: NextRequest) {
   // EMI overview: every EMI this partner is part of (as payer or sharer), visible to all partners involved.
   const emiSchedules = await prisma.expenseEmiSchedule.findMany({
     where: {
+      expense: { status: { not: 'CANCELLED' } },
       OR: [
         { expense: { paidByPartnerId: partner.id } },
         { installments: { some: { partnerObligations: { some: { partnerId: partner.id } } } } },

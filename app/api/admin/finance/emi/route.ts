@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   }
 
   const schedules = await prisma.expenseEmiSchedule.findMany({
+    where: { expense: { status: { not: 'CANCELLED' } } },
     include: {
       expense: {
         include: { paidByPartner: { select: { id: true, displayName: true } } },

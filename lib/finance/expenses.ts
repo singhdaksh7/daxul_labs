@@ -146,11 +146,17 @@ export async function cancelBusinessExpense(params: { expenseId: string; reason:
   return await prisma.$transaction(async (tx) => {
     const expense = await tx.businessExpense.findUnique({
       where: { id: params.expenseId },
-      include: { shares: true },
+      include: { shares: true, emiSchedule: { include: { installments: { include: { partnerObligations: true } } } } },
     });
     if (!expense) throw new ExpenseCancelError('Expense not found', 404);
     if (expense.status === 'CANCELLED') throw new ExpenseCancelError('This expense is already cancelled');
-    if (expense.isEmi) throw new ExpenseCancelError('EMI purchases cannot be cancelled here. Ask for help to unwind an EMI.');
+    const emiInstallments = expense.emiSchedule?.installments ?? [];
+    const emiPaidByOthers = emiInstallments.some((i) =>
+      i.partnerObligations.some((o) => o.partnerId !== expense.paidByPartnerId && o.amountPaidPaise > BigInt(0)),
+    );
+    if (emiPaidByOthers) {
+      throw new ExpenseCancelError('A partner has already paid towards this EMI, so it cannot be cancelled.');
+    }
     if (expense.shares.some((s) => s.paidAmountPaise > BigInt(0))) {
       throw new ExpenseCancelError('A partner has already paid towards this expense, so it cannot be cancelled.');
     }
@@ -198,6 +204,14 @@ export async function cancelBusinessExpense(params: { expenseId: string; reason:
       });
     }
 
+    if (emiInstallments.length > 0) {
+      const ids = emiInstallments.map((i) => i.id);
+      await tx.partnerEmiObligation.updateMany({
+        where: { emiInstallmentId: { in: ids } },
+        data: { status: 'CANCELLED', remainingPaise: BigInt(0) },
+      });
+      await tx.expenseEmiInstallment.updateMany({ where: { id: { in: ids } }, data: { status: 'CANCELLED' } });
+    }
     await tx.partnerExpenseShare.updateMany({
       where: { expenseId: expense.id },
       data: { status: 'WAIVED', remainingPaise: BigInt(0) },
