@@ -40,6 +40,52 @@ export default function StaffAdminClient() {
     load();
   }, [load]);
 
+  const [form, setForm] = useState({ email: "", name: "", password: "", role: "SUPER_ADMIN" });
+  const [adding, setAdding] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const addStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdding(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/admin/staff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.email, name: form.name || undefined, password: form.password || undefined, role: form.role }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Failed to add staff");
+      setNotice(json.created ? `Account created for ${json.user.email}. Share the temporary password privately.` : `${json.user.email} now has ${json.user.role} access.`);
+      setForm({ email: "", name: "", password: "", role: "SUPER_ADMIN" });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add staff");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const changeAccess = async (m: Member, role: string) => {
+    setSaving(m.id);
+    setError(null);
+    try {
+      const res = await fetch("/api/admin/staff", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: m.id, role }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Failed to update access");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update access");
+    } finally {
+      setSaving(null);
+    }
+  };
+
   const changeRole = async (m: Member, staffRole: string) => {
     setSaving(m.id);
     setError(null);
@@ -70,6 +116,21 @@ export default function StaffAdminClient() {
           <RefreshCw className="h-3.5 w-3.5" /> Refresh
         </button>
       </div>
+      {notice && <p role="status" className="rounded-lg border border-[#C8FF35]/30 px-3 py-2 text-xs text-[#C8FF35]">{notice}</p>}
+      <form onSubmit={addStaff} className="grid gap-3 rounded-xl border border-[#242426] bg-[#151515] p-5 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="sm:col-span-2 lg:col-span-5">
+          <h2 className="text-sm font-bold text-[#F3F0E9]">Add partner / staff</h2>
+          <p className="text-xs text-[#B9B9B4]">SUPER_ADMIN = full access to everything (finance, staff, settings). ADMIN = admin panel and finance, but cannot manage staff. If the email already has an account it is upgraded; otherwise set a temporary password.</p>
+        </div>
+        <input required type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-sm text-[#F3F0E9]" />
+        <input placeholder="Name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-sm text-[#F3F0E9]" />
+        <input type="password" minLength={10} placeholder="Temporary password (new accounts)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-sm text-[#F3F0E9]" />
+        <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-sm text-[#F3F0E9]">
+          <option value="SUPER_ADMIN">SUPER_ADMIN (everything)</option>
+          <option value="ADMIN">ADMIN</option>
+        </select>
+        <button type="submit" disabled={adding} className="rounded-lg bg-[#C8FF35] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#0B0B0C] disabled:opacity-50">{adding ? "Adding…" : "Add"}</button>
+      </form>
       {error && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</p>}
       <div className="overflow-x-auto rounded-xl border border-[#242426] bg-[#151515]">
         <table className="w-full min-w-[640px] text-left text-sm">
@@ -85,7 +146,19 @@ export default function StaffAdminClient() {
               staff.map((m) => (
                 <tr key={m.id}>
                   <td className="p-3"><p className="font-semibold text-[#F3F0E9]">{m.name || "—"}</p><p className="text-xs text-[#B9B9B4]">{m.email}</p></td>
-                  <td className="p-3 text-xs text-[#B9B9B4]">{m.role}</td>
+                  <td className="p-3">
+                    <select
+                      value={m.role}
+                      disabled={saving === m.id}
+                      onChange={(e) => changeAccess(m, e.target.value)}
+                      className="rounded-lg border border-[#242426] bg-[#0B0B0C] px-2 py-1 text-xs text-[#F3F0E9]"
+                      aria-label={`Account access for ${m.email}`}
+                    >
+                      <option value="SUPER_ADMIN">SUPER_ADMIN</option>
+                      <option value="ADMIN">ADMIN</option>
+                      <option value="CUSTOMER">Revoke admin access</option>
+                    </select>
+                  </td>
                   <td className="p-3">
                     <select
                       value={m.staffRole ?? ""}
