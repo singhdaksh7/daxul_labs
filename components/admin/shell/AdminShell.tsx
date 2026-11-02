@@ -50,6 +50,27 @@ type NavItem = { label: string; href: string; icon: React.ComponentType<{ classN
 const NAV: { section: string; items: NavItem[] }[] = [
   { section: "Overview", items: [{ label: "Dashboard", href: "/admin", icon: LayoutDashboard }] },
   {
+    section: "Operations",
+    items: [
+      { label: "Today Overview", href: "/admin/operations/today", icon: LayoutDashboard },
+      { label: "Print Queue & Fleet", href: "/admin/production/queue", icon: Factory },
+      { label: "Materials & Spools", href: "/admin/materials", icon: Boxes },
+      { label: "Bill of Materials", href: "/admin/bom", icon: Layers },
+      { label: "Failures & Reprints", href: "/admin/production/failures", icon: CheckSquare },
+      { label: "Suppliers & POs", href: "/admin/purchasing", icon: ShoppingBag },
+      { label: "Shipments & Dispatch", href: "/admin/shipments", icon: Package },
+      { label: "Alert Center", href: "/admin/alerts", icon: Bell },
+    ],
+  },
+  {
+    section: "Finance & Staff",
+    items: [
+      { label: "Margin Analytics", href: "/admin/analytics/margins", icon: TrendingUp },
+      { label: "Staff & Permissions", href: "/admin/staff", icon: Users },
+      { label: "Operations Settings", href: "/admin/settings/operations", icon: Settings },
+    ],
+  },
+  {
     section: "Commerce",
     items: [
       { label: "Orders", href: "/admin/orders", icon: ShoppingBag },
