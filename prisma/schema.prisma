@@ -353,6 +353,8 @@ model OrderItem {
   customizationFee Float   @default(0)
   variantSelections Json?  // Array of { group, variant, sku, priceAdjustment } snapshot
   productSku      String?
+  lithophaneSnapshot Json? // Frozen custom-lithophane configuration (variety, size, dims, crop, options, price, generation)
+  lithophaneStage String?  // Custom lithophane workflow stage (see lib/lithophane.ts LITHOPHANE_STAGES)
   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product         Product  @relation(fields: [productId], references: [id])
   jobTickets      ProductionJobTicket[]
@@ -525,6 +527,7 @@ model UploadedFile {
   url          String
   userId       String?
   orderId      String?
+  ownerToken   String?  // SHA-256 of the anonymous owner cookie for guest lithophane uploads
   createdAt    DateTime @default(now())
 }
 
@@ -2103,3 +2106,94 @@ model FinanceSettings {
 
 
 
+
+
+// ---------------------------------------------------------------- Custom Lithophane Builder
+model LithophaneSettings {
+  id                  String   @id @default("default")
+  productId           String?  // Product row used for cart/order lines
+  defaultVarietyId    String?
+  defaultOrientation  String   @default("portrait")
+  defaultCropStrategy String   @default("center")
+  defaultThicknessMm  Float    @default(3)
+  minThicknessMm      Float    @default(0.6)
+  previewResolution   Int      @default(160)
+  productionResolution Int     @default(640)
+  allowCustomDimensions Boolean @default(false)
+  customMinMm         Float    @default(60)
+  customMaxMm         Float    @default(300)
+  customPricePer100Cm2 Float   @default(0)
+  headline            String   @default("Turn your photo into light")
+  subheadline         String   @default("Upload a photo. We turn it into a custom 3D-printed lithophane.")
+  uploadGuidance      String   @default("Use a clear, well-lit photo. Avoid blurry or very dark images.")
+  previewDisclaimer   String   @default("Preview is a visual simulation. Final printed result may vary slightly depending on image quality and selected size.")
+  leadTimeText        String   @default("Ships in 5-7 working days after design approval")
+  updatedAt           DateTime @updatedAt
+}
+
+model LithophaneVariety {
+  id          String   @id @default(cuid())
+  key         String   @unique // photo_frame, table_stand, light_box
+  name        String
+  description String   @default("")
+  thumbnailUrl String?
+  baseModel   String   @default("") // geometry preset key / base model reference
+  basePrice   Float    @default(0)
+  supportsLight Boolean @default(true)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  defaultSizeId String?
+  optionGroups Json    @default("[]") // [{ key, label, type: select|toggle, geometry, choices:[{value,label,priceAdjustment}], default }]
+  productionDays Int   @default(7)
+  sizes       LithophaneSize[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model LithophaneSize {
+  id          String   @id @default(cuid())
+  varietyId   String
+  variety     LithophaneVariety @relation(fields: [varietyId], references: [id], onDelete: Cascade)
+  name        String
+  widthMm     Float
+  heightMm    Float
+  depthMm     Float?
+  thicknessMm Float
+  priceAdjustment Float @default(0)
+  productionNotes String?
+  isDefault   Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+
+  @@index([varietyId])
+}
+
+/// One row per distinct geometry configuration hash. PREVIEW rows are browser-friendly meshes;
+/// PRODUCTION rows are queued manufacturing-quality generations and are never derived from preview.
+model LithophaneGeneration {
+  id          String   @id @default(cuid())
+  hash        String
+  kind        String   @default("PREVIEW") // PREVIEW | PRODUCTION
+  status      String   @default("READY")   // READY | PENDING | FAILED
+  uploadFilename String
+  config      Json
+  resolution  Int
+  ownerToken  String?
+  userId      String?
+  createdAt   DateTime @default(now())
+
+  @@unique([hash, kind])
+  @@index([uploadFilename])
+}
+
+
+/// Admin-editable third-party integration settings (e.g. Shiprocket). Secret values are stored
+/// AES-256-GCM encrypted in valueEncrypted and are never returned to the browser.
+model IntegrationSetting {
+  key            String   @id // e.g. shiprocket.email
+  value          String?
+  valueEncrypted String?
+  isSecret       Boolean  @default(false)
+  updatedBy      String?
+  updatedAt      DateTime @updatedAt
+}

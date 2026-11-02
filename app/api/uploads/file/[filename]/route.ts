@@ -3,6 +3,7 @@ import path from 'path';
 import { requireAdminSession, getAuthSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getStorageService } from '@/lib/storage';
+import { LITHO_OWNER_COOKIE, ownerCanRead } from '@/lib/lithophaneAccess';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,13 +55,12 @@ export async function GET(
       const adminAuth = await requireAdminSession();
       if (!adminAuth.authorized) {
         const userSession = await getAuthSession();
-        const currentUserId = (userSession?.user as { id?: string } | undefined)?.id;
-        if (!userSession?.user || !currentUserId) {
-          return NextResponse.json({ error: 'Unauthorized: Access to customer artwork requires authentication' }, { status: 401 });
-        }
+        const currentUserId = (userSession?.user as { id?: string } | undefined)?.id ?? null;
+        const ownerCookie = req.cookies.get(LITHO_OWNER_COOKIE)?.value ?? null;
         const fileRecord = await prisma.uploadedFile.findUnique({ where: { filename: safeFilename } });
-        // Unknown file or someone else's file: indistinguishable 404 (no existence oracle).
-        if (!fileRecord || !fileRecord.userId || fileRecord.userId !== currentUserId) {
+        // Owner = logged-in uploader OR the guest holding the owner cookie (SHA-256 matches ownerToken).
+        // Unknown file / someone else's file / anonymous: indistinguishable 404 (no existence oracle).
+        if (!ownerCanRead(fileRecord, { isAdmin: false, userId: currentUserId, ownerCookie })) {
           return NextResponse.json({ error: 'File not found' }, { status: 404 });
         }
       }

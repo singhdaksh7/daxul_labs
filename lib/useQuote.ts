@@ -7,6 +7,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CartItem } from "@/lib/storeContext";
 import type { QuoteResponse } from "@/lib/quoteResponse";
+import { lithophanePayload } from "@/lib/lithophane";
 
 export interface UseQuoteOptions {
   cart: CartItem[];
@@ -31,6 +32,7 @@ export function useQuote({ cart, couponCode, paymentMethod, shippingMethod, pinc
         quantity: i.quantity,
         variantSelections: i.variantSelections.map((v) => ({ groupId: v.groupId, variantId: v.variantId })),
         customizations: i.customizations,
+        ...(i.lithophane ? { lithophane: lithophanePayload(i.lithophane) } : {}),
       })),
       couponCode: couponCode || undefined,
       paymentMethod,

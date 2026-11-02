@@ -34,10 +34,10 @@ export default function MarginsClient() {
     : [];
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6 sm:px-8 sm:py-8">
       <div className="border-b border-[#242426] pb-6">
-        <h1 className="text-xl font-bold tracking-tight text-[#F3F0E9]">Margin Analytics</h1>
-        <p className="mt-1 text-xs text-[#B9B9B4]">Based on cost snapshots frozen at order time (latest 30).</p>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-[#F3F0E9]">Margin Analytics</h1>
+        <p className="mt-2 text-xs leading-relaxed text-[#B9B9B4]">Based on cost snapshots frozen at order time (latest 30).</p>
       </div>
       {err && <p role="alert" className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-300">{err}</p>}
       {!d && !err && <p className="text-xs text-[#B9B9B4]">Loading…</p>}
@@ -45,7 +45,7 @@ export default function MarginsClient() {
         <>
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {cards.map(([l, v]) => (
-              <div key={l} className="rounded-xl border border-[#242426] bg-[#151515] p-5">
+              <div key={l} className="rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-[#B9B9B4]">{l}</span>
                 <p className="mt-2 text-2xl font-bold text-[#F3F0E9]">{v}</p>
               </div>

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { computeCheckout } from '@/lib/pricing';
 import { toQuoteResponse } from '@/lib/quoteResponse';
+import { getLithophaneCaller } from '@/lib/lithophaneOwner';
+import { lithophaneInputSchema } from '@/lib/lithophaneSchema';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +27,7 @@ const bodySchema = z.object({
         quantity: z.number().int().min(1).max(100),
         variantSelections: z.array(z.object({ groupId: z.string().min(1), variantId: z.string().min(1) })).max(20).optional(),
         customizations: z.record(z.string(), z.unknown()).optional(),
+        lithophane: lithophaneInputSchema.optional(),
       }),
     )
     .min(1)
@@ -83,7 +86,9 @@ export async function POST(req: NextRequest) {
       giftCardCode,
       userId,
     } = parsed.data;
+    const lithophaneCaller = await getLithophaneCaller();
     const comp = await computeCheckout({
+      lithophaneCaller,
       items,
       couponCode,
       paymentMethod,

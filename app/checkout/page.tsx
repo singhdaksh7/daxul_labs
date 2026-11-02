@@ -8,6 +8,8 @@ import { useCart } from "@/lib/storeContext";
 import { useSiteSettings } from "@/lib/siteContext";
 import { formatMoney } from "@/lib/cartPricing";
 import { useQuote } from "@/lib/useQuote";
+import { lithophanePayload } from "@/lib/lithophane";
+import LithophaneCartSummary from "@/components/lithophane/LithophaneCartSummary";
 import { trackFunnel } from "@/lib/useFunnelTracker";
 import { CreditCard, Truck, ShieldCheck, CheckCircle2, Lock, Printer } from "lucide-react";
 
@@ -252,6 +254,7 @@ export default function CheckoutPage() {
         quantity: i.quantity,
         variantSelections: i.variantSelections.map((v) => ({ groupId: v.groupId, variantId: v.variantId })),
         customizations: i.customizations,
+        ...(i.lithophane ? { lithophane: lithophanePayload(i.lithophane) } : {}),
       })),
       couponCode: couponCode || undefined,
       paymentMethod,
@@ -697,6 +700,7 @@ export default function CheckoutPage() {
                           {item.variantSelections.length > 0 &&
                             ` • ${item.variantSelections.map((v) => v.variantName).join(", ")}`}
                         </div>
+                        {item.lithophane && <LithophaneCartSummary data={item.lithophane} compact />}
                       </div>
                       <div className="font-bold text-daxul-black">{money(item.unitPrice * item.quantity)}</div>
                     </div>

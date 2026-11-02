@@ -57,10 +57,10 @@ export default function SettlementsAdminClient() {
   };
 
   return (
-    <div className="space-y-8" id="settlements-view">
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6 sm:px-8 sm:py-8" id="settlements-view">
       <div className="border-b border-[#242426] pb-6">
-        <h1 className="text-xl font-bold tracking-tight text-[#F3F0E9]">Partner Settlements & Verification</h1>
-        <p className="mt-1 text-xs text-[#B9B9B4]">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-[#F3F0E9]">Partner Settlements & Verification</h1>
+        <p className="mt-2 text-xs leading-relaxed text-[#B9B9B4]">
           Review incoming debt clearance payments, verify bank UTRs and screenshots, and approve ledger adjustments.
         </p>
       </div>
@@ -79,39 +79,39 @@ export default function SettlementsAdminClient() {
         </div>
       )}
 
-      <div className="rounded-xl border border-[#242426] bg-[#151515] p-6">
+      <div className="rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-[#F3F0E9] flex items-center gap-2">
           <CheckSquare className="h-4 w-4 text-[#C8FF35]" />
           Settlement Verification Queue ({settlements.length})
         </h2>
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-left text-xs text-[#B9B9B4]" id="settlements-table">
-            <thead className="border-b border-[#242426] text-[10px] uppercase text-gray-500">
+          <table className="w-full min-w-[640px] text-left text-xs text-[#B9B9B4]" id="settlements-table">
+            <thead className="border-b border-[#242426] text-[11px] uppercase tracking-wider text-gray-500">
               <tr>
-                <th className="pb-3">Reference / Payer</th>
-                <th className="pb-3">Recipient Partner</th>
-                <th className="pb-3">Amount</th>
-                <th className="pb-3">Payment Method</th>
-                <th className="pb-3">Status</th>
-                <th className="pb-3">Actions</th>
+                <th className="pb-3 pr-4 font-semibold">Reference / Payer</th>
+                <th className="pb-3 pr-4 font-semibold">Recipient Partner</th>
+                <th className="pb-3 pr-4 font-semibold">Amount</th>
+                <th className="pb-3 pr-4 font-semibold">Payment Method</th>
+                <th className="pb-3 pr-4 font-semibold">Status</th>
+                <th className="pb-3 pr-4 font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#242426]">
               {settlements.map((st) => (
                 <tr key={st.id} className="hover:bg-[#1a1a1d] settlement-row" data-settlement-id={st.id}>
-                  <td className="py-3 font-medium text-[#F3F0E9]">
+                  <td className="py-3.5 pr-4 font-medium text-[#F3F0E9]">
                     {st.payerPartner?.displayName}
-                    <span className="block text-[10px] text-gray-500">Ref: {st.transactionReference}</span>
+                    <span className="block text-[11px] text-gray-500">Ref: {st.transactionReference}</span>
                   </td>
-                  <td className="py-3 text-gray-300">
+                  <td className="py-3.5 pr-4 text-gray-300">
                     {st.recipientPartner?.displayName || "Primary Settlement"}
                   </td>
-                  <td className="py-3 font-bold text-[#C8FF35]">
+                  <td className="py-3.5 pr-4 font-bold text-[#C8FF35]">
                     ₹{(Number(st.amountPaise) / 100).toLocaleString('en-IN')}
                   </td>
-                  <td className="py-3 text-gray-400">{st.paymentMethod}</td>
-                  <td className="py-3">
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                  <td className="py-3.5 pr-4 text-gray-400">{st.paymentMethod}</td>
+                  <td className="py-3.5 pr-4">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
                       st.status === "VERIFIED"
                         ? "bg-emerald-500/10 text-emerald-400"
                         : st.status === "REJECTED"
@@ -121,7 +121,7 @@ export default function SettlementsAdminClient() {
                       {st.status}
                     </span>
                   </td>
-                  <td className="py-3">
+                  <td className="py-3.5 pr-4">
                     {st.status === "PENDING_VERIFICATION" && (
                       <div className="flex items-center gap-2">
                         <button

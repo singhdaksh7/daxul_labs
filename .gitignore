@@ -18,3 +18,4 @@ coverage/
 /uploads/
 *.tsbuildinfo
 .claude/
+.next-*/

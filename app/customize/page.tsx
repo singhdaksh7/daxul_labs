@@ -47,6 +47,23 @@ export default async function CustomizePage() {
       </section>
 
       <section className="flex-1 py-12 max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 w-full space-y-12">
+        {/* Hero custom product */}
+        <div className="bg-daxul-black text-daxul-bone rounded-2xl p-6 sm:p-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+          <div className="space-y-2 max-w-xl">
+            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-daxul-lime">New</span>
+            <h2 className="text-2xl sm:text-3xl font-bold uppercase tracking-tight">Custom Lithophane</h2>
+            <p className="text-sm text-white/70 leading-relaxed">
+              Upload a photo and preview it in 3D, with the light on or off. Choose a photo frame, table stand or light box.
+            </p>
+          </div>
+          <Link
+            href="/customize/lithophane"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-daxul-lime px-6 py-3 text-sm font-bold uppercase tracking-wider text-daxul-black hover:opacity-90"
+          >
+            Customize Lithophane <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+
         {/* Process */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {steps.map((st, i) => {

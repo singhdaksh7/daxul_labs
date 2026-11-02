@@ -12,6 +12,7 @@ export default function PincodeEstimator({
   const [pincode, setPincode] = useState("");
   const [result, setResult] = useState<PincodeResult | null>(null);
   const [checked, setChecked] = useState(false);
+  const [liveEta, setLiveEta] = useState<string | null>(null);
 
   const handleCheck = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,6 +20,18 @@ export default function PincodeEstimator({
     const res = checkPincode(pincode, productionTimeDays);
     setResult(res);
     setChecked(true);
+    setLiveEta(null);
+    if (res.valid) {
+      // Optional live courier ETA (Shiprocket). Silently ignored when unconfigured or failing.
+      fetch(`/api/shipping/rates?pincode=${encodeURIComponent(res.pincode)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          if (d && d.live && typeof d.minDays === "number") {
+            setLiveEta(d.maxDays && d.maxDays > d.minDays ? `${d.minDays}-${d.maxDays} days in transit` : `~${d.minDays} days in transit`);
+          }
+        })
+        .catch(() => undefined);
+    }
   };
 
   return (
@@ -63,6 +76,9 @@ export default function PincodeEstimator({
                 <Truck className="w-3.5 h-3.5 text-daxul-black shrink-0" />
                 <span>{result.estimatedDeliveryText}</span>
               </div>
+              {liveEta && (
+                <div className="text-[#555550] text-[11px]">Courier estimate: {liveEta}</div>
+              )}
               <div className="text-[10px] text-[#71717A] pt-0.5">
                 • Standard Courier: Free on orders over ₹1,999<br />
                 • On-demand fabrication: ~{result.estimatedDispatchDays} days before dispatch<br />

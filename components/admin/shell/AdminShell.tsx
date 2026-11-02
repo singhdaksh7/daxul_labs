@@ -82,6 +82,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { label: "Margin Analytics", href: "/admin/analytics/margins", icon: TrendingUp },
       { label: "Staff & Permissions", href: "/admin/staff", icon: Users },
       { label: "Operations Settings", href: "/admin/settings/operations", icon: Settings },
+      { label: "Shiprocket", href: "/admin/settings/shiprocket", icon: Truck },
     ],
   },
   {
@@ -105,6 +106,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { label: "Job Tickets & QC", href: "/admin/production", icon: CheckSquare },
       { label: "Manufacturing", href: "/admin/orders?view=manufacturing", icon: Factory, view: "manufacturing" },
       { label: "Customizations", href: "/admin/orders?view=customizations", icon: Sparkles, view: "customizations" },
+      { label: "Lithophane Builder", href: "/admin/lithophane", icon: Sparkles },
       { label: "Inventory", href: "/admin/inventory", icon: Boxes },
     ],
   },

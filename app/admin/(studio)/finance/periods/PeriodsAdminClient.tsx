@@ -84,10 +84,10 @@ export default function PeriodsAdminClient() {
   };
 
   return (
-    <div className="space-y-8" id="periods-view">
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6 sm:px-8 sm:py-8" id="periods-view">
       <div className="border-b border-[#242426] pb-6">
-        <h1 className="text-xl font-bold tracking-tight text-[#F3F0E9]">Profit Accounting & Period Management</h1>
-        <p className="mt-1 text-xs text-[#B9B9B4]">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-[#F3F0E9]">Profit Accounting & Period Management</h1>
+        <p className="mt-2 text-xs leading-relaxed text-[#B9B9B4]">
           Formal closing periods (OPEN → REVIEW → LOCKED). Net profit snapshotting and immutable historical distribution.
         </p>
       </div>
@@ -109,12 +109,12 @@ export default function PeriodsAdminClient() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Periods List */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-xl border border-[#242426] bg-[#151515] p-6">
+          <div className="rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-[#F3F0E9] flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-[#C8FF35]" />
               Accounting Periods ({periods.length})
             </h2>
-            <div className="mt-4 space-y-4" id="periods-list">
+            <div className="mt-5 space-y-5" id="periods-list">
               {periods.map((p) => (
                 <div key={p.id} className="rounded-lg border border-[#242426] bg-[#0B0B0C] p-4 text-xs period-card" data-period-id={p.id}>
                   <div className="flex justify-between items-start">
@@ -124,7 +124,7 @@ export default function PeriodsAdminClient() {
                         {new Date(p.startDate).toLocaleDateString()} to {new Date(p.endDate).toLocaleDateString()}
                       </p>
                     </div>
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
                       p.status === "LOCKED" || p.status === "DISTRIBUTED"
                         ? "bg-red-500/10 text-red-400"
                         : "bg-emerald-500/10 text-emerald-400"
@@ -150,7 +150,7 @@ export default function PeriodsAdminClient() {
 
                   {p.allocations?.length > 0 && (
                     <div className="mt-4 border-t border-[#242426] pt-3">
-                      <span className="text-[10px] font-semibold uppercase text-gray-500">Partner Profit Distributions</span>
+                      <span className="text-[11px] font-semibold uppercase text-gray-500">Partner Profit Distributions</span>
                       <div className="mt-2 space-y-1">
                         {p.allocations.map((a: any) => (
                           <div key={a.id} className="flex justify-between text-[11px] text-gray-400">
@@ -184,12 +184,12 @@ export default function PeriodsAdminClient() {
         </div>
 
         {/* Create Period Form */}
-        <div className="rounded-xl border border-[#242426] bg-[#151515] p-6">
+        <div className="rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[#F3F0E9] flex items-center gap-2">
             <Plus className="h-4 w-4 text-[#C8FF35]" />
             Initialize Accounting Period
           </h2>
-          <form onSubmit={handleCreatePeriod} className="mt-4 space-y-4" id="period-form">
+          <form onSubmit={handleCreatePeriod} className="mt-5 space-y-5" id="period-form">
             <div>
               <label className="block text-[11px] font-medium text-[#B9B9B4]">Period Name</label>
               <input
@@ -199,7 +199,7 @@ export default function PeriodsAdminClient() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. November 2026 Closing"
                 required
-                className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
               />
             </div>
 
@@ -211,7 +211,7 @@ export default function PeriodsAdminClient() {
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 required
-                className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
               />
             </div>
 
@@ -223,14 +223,14 @@ export default function PeriodsAdminClient() {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 required
-                className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
               />
             </div>
 
             <button
               id="submit-period-btn"
               type="submit"
-              className="mt-4 w-full rounded-lg bg-[#C8FF35] py-2 text-xs font-semibold text-black hover:bg-[#b8eb28]"
+              className="mt-6 w-full rounded-lg bg-[#C8FF35] py-2.5 text-xs font-semibold text-black hover:bg-[#b8eb28]"
             >
               Open Period
             </button>

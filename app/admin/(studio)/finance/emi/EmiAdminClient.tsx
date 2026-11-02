@@ -102,10 +102,10 @@ export default function EmiAdminClient() {
   };
 
   return (
-    <div className="space-y-8" id="emi-view">
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6 sm:px-8 sm:py-8" id="emi-view">
       <div className="border-b border-[#242426] pb-6">
-        <h1 className="text-xl font-bold tracking-tight text-[#F3F0E9]">EMI Schedules & Equipment Financing</h1>
-        <p className="mt-1 text-xs text-[#B9B9B4]">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-[#F3F0E9]">EMI Schedules & Equipment Financing</h1>
+        <p className="mt-2 text-xs leading-relaxed text-[#B9B9B4]">
           Track down payments, monthly installments, interest overheads, and multi-partner debt obligations.
         </p>
       </div>
@@ -132,7 +132,7 @@ export default function EmiAdminClient() {
           { label: "Paid to lender", value: stats.paid, cls: "text-[#C8FF35]" },
           { label: "Partner shares pending", value: stats.sharesPending, cls: "text-yellow-400" },
         ].map((m) => (
-          <div key={m.label} className="rounded-xl border border-[#242426] bg-[#151515] p-5">
+          <div key={m.label} className="rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-[#B9B9B4]">{m.label}</span>
             <p className={`mt-2 text-2xl font-bold ${m.cls}`}>{m.value}</p>
           </div>
@@ -142,7 +142,7 @@ export default function EmiAdminClient() {
       <div className="mt-2 grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Schedules Roster */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-xl border border-[#242426] bg-[#151515] p-6">
+          <div className="rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-[#F3F0E9] flex items-center gap-2">
               <Clock className="h-4 w-4 text-[#C8FF35]" />
               Active EMI Schedules ({schedules.length})
@@ -159,12 +159,12 @@ export default function EmiAdminClient() {
         </div>
 
         {/* Create EMI Schedule Form */}
-        <div className="rounded-xl border border-[#242426] bg-[#151515] p-6">
+        <div className="rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[#F3F0E9] flex items-center gap-2">
             <Plus className="h-4 w-4 text-[#C8FF35]" />
             New Equipment Financing / EMI
           </h2>
-          <form onSubmit={handleCreateEmi} className="mt-4 space-y-4" id="emi-form">
+          <form onSubmit={handleCreateEmi} className="mt-5 space-y-5" id="emi-form">
             <div>
               <label className="block text-[11px] font-medium text-[#B9B9B4]">Equipment Title</label>
               <input
@@ -174,13 +174,13 @@ export default function EmiAdminClient() {
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. QA 3D Printer"
                 required
-                className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] font-medium text-[#B9B9B4]">Purchase Price (₹)</label>
+                <label className="block text-xs font-medium text-[#B9B9B4]">Purchase Price (₹)</label>
                 <input
                   id="emi-price-input"
                   type="number"
@@ -189,11 +189,11 @@ export default function EmiAdminClient() {
                   onChange={(e) => setTotalCostRupees(e.target.value)}
                   placeholder="90000"
                   required
-                  className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-2 py-1.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                  className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-medium text-[#B9B9B4]">Down Payment (₹)</label>
+                <label className="block text-xs font-medium text-[#B9B9B4]">Down Payment (₹)</label>
                 <input
                   id="emi-downpayment-input"
                   type="number"
@@ -202,25 +202,25 @@ export default function EmiAdminClient() {
                   onChange={(e) => setDownPaymentRupees(e.target.value)}
                   placeholder="30000"
                   required
-                  className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-2 py-1.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                  className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-[10px] font-medium text-[#B9B9B4]">Tenure (Months)</label>
+                <label className="block text-xs font-medium text-[#B9B9B4]">Tenure (Months)</label>
                 <input
                   id="emi-tenure-input"
                   type="number"
                   value={totalTenureMonths}
                   onChange={(e) => setTotalTenureMonths(e.target.value)}
                   required
-                  className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-2 py-1.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                  className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-medium text-[#B9B9B4]">Monthly EMI (₹) <span className="text-gray-500">- auto-calculated, optional</span></label>
+                <label className="block text-xs font-medium text-[#B9B9B4]">Monthly EMI (₹) <span className="text-gray-500">- auto-calculated, optional</span></label>
                 <input
                   id="emi-monthly-input"
                   type="number"
@@ -228,19 +228,19 @@ export default function EmiAdminClient() {
                   value={monthlyInstallmentRupees}
                   onChange={(e) => setMonthlyInstallmentRupees(e.target.value)}
                   placeholder="calculated automatically"
-                  className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-2 py-1.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                  className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] font-medium text-[#B9B9B4]">First EMI Due Date</label>
+              <label className="block text-xs font-medium text-[#B9B9B4]">First EMI Due Date</label>
               <input
                 id="emi-first-date"
                 type="date"
                 value={firstEmiDate}
                 onChange={(e) => setFirstEmiDate(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-2 py-1.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
               />
             </div>
 
@@ -251,7 +251,7 @@ export default function EmiAdminClient() {
                 value={financedByPartnerId}
                 onChange={(e) => setFinancedByPartnerId(e.target.value)}
                 required
-                className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
               >
                 {partners.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -264,7 +264,7 @@ export default function EmiAdminClient() {
             <button
               id="submit-emi-btn"
               type="submit"
-              className="mt-4 w-full rounded-lg bg-[#C8FF35] py-2 text-xs font-semibold text-black hover:bg-[#b8eb28]"
+              className="mt-6 w-full rounded-lg bg-[#C8FF35] py-2.5 text-xs font-semibold text-black hover:bg-[#b8eb28]"
             >
               Generate EMI Schedule & Split
             </button>
@@ -287,7 +287,7 @@ function Badge({ tone, children }: { tone: "green" | "yellow" | "red" | "gray"; 
     red: "bg-red-500/10 text-red-300 border-red-500/30",
     gray: "bg-[#242426] text-gray-300 border-[#2f2f32]",
   } as const;
-  return <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${map[tone]}`}>{children}</span>;
+  return <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${map[tone]}`}>{children}</span>;
 }
 
 function ScheduleCard({ sch, onChanged, onError }: { sch: any; onChanged: () => void; onError: (m: string | null) => void }) {
@@ -387,7 +387,7 @@ function ScheduleCard({ sch, onChanged, onError }: { sch: any; onChanged: () => 
                 )}
 
                 <div className="space-y-2.5 border-t border-[#242426] pt-4">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Partner shares</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Partner shares</p>
                   {obligations.map((o) => {
                     const isPayer = o.partnerId === sch.expense?.paidByPartnerId;
                     const done = o.status === "PAID";

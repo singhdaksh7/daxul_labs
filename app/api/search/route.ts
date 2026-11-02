@@ -28,6 +28,7 @@ export async function GET(req: NextRequest) {
         where: {
           isArchived: false,
           isActive: true,
+          slug: { not: "custom-lithophane" },
           OR: [
             { name: { contains: cleanQuery, mode: "insensitive" } },
             { sku: { contains: cleanQuery, mode: "insensitive" } },

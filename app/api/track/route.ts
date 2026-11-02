@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getPublicShipment } from '@/lib/shiprocket/publicTracking';
 
 /**
  * Public order tracking. The caller must supply the order number AND either the
@@ -137,9 +138,13 @@ export async function POST(req: NextRequest) {
       return { name: it.productName, quantity: it.quantity, selections };
     });
 
+    // Shiprocket tracking events (stored; optional throttled live refresh). Failures never break tracking.
+    const shipment = await getPublicShipment(order.orderNumber, { refresh: body.refresh === true }).catch(() => null);
+
     return NextResponse.json({
       success: true,
       order: {
+        shipment,
         orderNumber: order.orderNumber,
         status: order.status,
         createdAt: order.createdAt,

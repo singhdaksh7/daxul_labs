@@ -39,6 +39,12 @@ interface TrackedOrder {
   trackingUrl?: string | null;
   estimatedDispatchDays?: number;
   statusHistory: { status: string; timestamp: string }[];
+  shipment?: {
+    status: string;
+    awb: string;
+    courierName?: string | null;
+    events: { status: string; at: string; activity?: string | null; location?: string | null }[];
+  } | null;
   items: { name: string; quantity: number; selections: { label?: string; value: string }[] }[];
 }
 
@@ -64,6 +70,7 @@ export default function TrackOrderPage() {
         body: JSON.stringify({
           orderNumber: orderQuery.trim(),
           verificationInput: emailQuery.trim(),
+          refresh: true,
         }),
       });
       const data = await res.json();
@@ -206,6 +213,28 @@ export default function TrackOrderPage() {
                     Track with courier
                   </a>
                 )}
+              </div>
+            )}
+
+            {/* Courier scan events (Shiprocket) */}
+            {foundOrder.shipment && foundOrder.shipment.events.length > 0 && (
+              <div className="bg-[#F3F0E9] p-4 rounded-lg border border-daxul-black/10 text-xs space-y-2">
+                <div className="font-bold uppercase text-[#71717A]">
+                  Courier updates: {foundOrder.shipment.status.replace(/_/g, " ")}
+                </div>
+                <ul className="space-y-1.5">
+                  {foundOrder.shipment.events.map((ev, i) => (
+                    <li key={i} className="flex flex-col sm:flex-row sm:gap-3">
+                      <span className="font-mono text-[#71717A] shrink-0">
+                        {ev.at ? new Date(ev.at).toLocaleString("en-IN") : ""}
+                      </span>
+                      <span className="text-daxul-black">
+                        {ev.status.replace(/_/g, " ")}
+                        {ev.location ? ` · ${ev.location}` : ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 

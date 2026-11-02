@@ -12,6 +12,9 @@ import { redeemLoyaltyPoints } from '@/lib/retention/loyalty';
 import { redeemGiftCard } from '@/lib/retention/giftCards';
 import { debitStoreCredit } from '@/lib/retention/storeCredit';
 import { registerReferralAttribution } from '@/lib/retention/referrals';
+import { getLithophaneCaller } from '@/lib/lithophaneOwner';
+import { queueProductionGeneration } from '@/lib/lithophaneServer';
+import { lithophaneInputSchema } from '@/lib/lithophaneSchema';
 
 /**
  * Request payload (client prices are NEVER trusted; optional price hints are only
@@ -28,6 +31,7 @@ const itemSchema = z.object({
   quantity: z.number().int().min(1).max(100),
   variantSelections: z.array(z.object({ groupId: z.string().min(1), variantId: z.string().min(1) })).optional(),
   customizations: z.record(z.string(), z.unknown()).optional(),
+  lithophane: lithophaneInputSchema.optional(),
   // optional client hints, verified only
   unitPrice: z.number().optional(),
   price: z.number().optional(),
@@ -131,7 +135,9 @@ export async function POST(req: NextRequest) {
     await maybeReleaseExpiredReservations();
 
     // 1. Authoritative computation: the SAME function /api/quote uses.
+    const lithophaneCaller = await getLithophaneCaller();
     const comp = await computeCheckout({
+      lithophaneCaller,
       items,
       couponCode,
       paymentMethod,
@@ -273,6 +279,8 @@ export async function POST(req: NextRequest) {
               customizations: (l.customizations ?? undefined) as Prisma.InputJsonValue | undefined,
               customizationFee: l.customizationFee,
               variantSelections: (l.variantSelections.length ? l.variantSelections : undefined) as Prisma.InputJsonValue | undefined,
+              lithophaneSnapshot: (l.lithophane ?? undefined) as unknown as Prisma.InputJsonValue | undefined,
+              lithophaneStage: l.lithophane ? 'new_order' : undefined,
             })),
           },
           statusHistory: {
@@ -281,6 +289,14 @@ export async function POST(req: NextRequest) {
         },
         include: { items: true },
       });
+
+      // Custom lithophanes: queue the PRODUCTION generation (preview mesh is never printed) and
+      // attach the private photo to the order. Real STL export is out of scope.
+      for (const l of cart.lines) {
+        if (!l.lithophane || !l.lithophaneResolved) continue;
+        await queueProductionGeneration(tx, l.lithophane, l.lithophaneResolved, existingUser?.id ?? null);
+        await tx.uploadedFile.updateMany({ where: { filename: l.lithophane.filename }, data: { orderId: ord.id } });
+      }
 
       // Create Production Job Tickets for each manufactured order item
       for (let idx = 0; idx < ord.items.length; idx++) {

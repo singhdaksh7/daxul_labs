@@ -106,11 +106,11 @@ export default function StaffAdminClient() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6 sm:px-8 sm:py-8">
       <div className="flex flex-col justify-between gap-4 border-b border-[#242426] pb-6 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-[#F3F0E9]">Staff & Permissions</h1>
-          <p className="mt-1 text-xs text-[#B9B9B4]">Admin users and their operational roles. Only SUPER_ADMIN can change roles.</p>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-[#F3F0E9]">Staff & Permissions</h1>
+          <p className="mt-2 text-xs leading-relaxed text-[#B9B9B4]">Admin users and their operational roles. Only SUPER_ADMIN can change roles.</p>
         </div>
         <button onClick={load} className="flex items-center gap-1.5 rounded-lg border border-[#242426] bg-[#151515] px-3 py-1.5 text-xs text-[#B9B9B4] hover:text-[#F3F0E9]">
           <RefreshCw className="h-3.5 w-3.5" /> Refresh

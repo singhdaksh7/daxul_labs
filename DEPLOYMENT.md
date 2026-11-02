@@ -173,6 +173,11 @@ sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com --redirect
 3. Secret: Enter the exact value from `RAZORPAY_WEBHOOK_SECRET`.
 4. Subscribe to events: `payment.captured`, `order.paid`, `payment.failed`.
 
+### Step 17b: Configure Shiprocket (optional)
+1. Create a Shiprocket **API user** (Settings -> API -> Create API User). Set on the server (never commit): `SHIPROCKET_EMAIL`, `SHIPROCKET_PASSWORD`, `SHIPROCKET_PICKUP_LOCATION` (exact pickup-address nickname in Shiprocket), `SHIPROCKET_PICKUP_PINCODE`, `SHIPROCKET_WEBHOOK_TOKEN` (random string, e.g. `openssl rand -hex 32`). Optional: `SHIPROCKET_DEFAULT_WEIGHT_GRAMS`, `SHIPROCKET_DEFAULT_LENGTH_CM`, `SHIPROCKET_DEFAULT_BREADTH_CM`, `SHIPROCKET_DEFAULT_HEIGHT_CM`.
+2. Webhook: Shiprocket Dashboard -> Settings -> API -> Webhooks. URL `https://yourdomain.com/api/shiprocket/webhook`, token = value of `SHIPROCKET_WEBHOOK_TOKEN` (sent as the `x-api-key` header).
+3. Without these variables the store keeps using flat shipping fees and the admin panel shows "Shiprocket not configured".
+
 ### Step 18: Run Production Smoke Tests
 Perform full smoke testing matrix (see Section 23 checklist).
 

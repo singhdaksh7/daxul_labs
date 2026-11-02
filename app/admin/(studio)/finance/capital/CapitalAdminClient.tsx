@@ -84,10 +84,10 @@ export default function CapitalAdminClient() {
     .reduce((acc, e) => acc + Number(e.amountPaise), 0);
 
   return (
-    <div className="space-y-8" id="capital-view">
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6 sm:px-8 sm:py-8" id="capital-view">
       <div className="border-b border-[#242426] pb-6">
-        <h1 className="text-xl font-bold tracking-tight text-[#F3F0E9]">Capital Contributions & Partner Advances</h1>
-        <p className="mt-1 text-xs text-[#B9B9B4]">
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-[#F3F0E9]">Capital Contributions & Partner Advances</h1>
+        <p className="mt-2 text-xs leading-relaxed text-[#B9B9B4]">
           Track equity capital investments (non-revenue) and short-term partner working capital loans/advances.
         </p>
       </div>
@@ -107,14 +107,14 @@ export default function CapitalAdminClient() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2" id="capital-metrics">
-        <div className="rounded-xl border border-[#242426] bg-[#151515] p-5">
+        <div className="rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-[#B9B9B4]">Total Capital Invested</span>
           <p className="mt-2 text-2xl font-bold text-[#C8FF35]" id="total-capital-amount">
             ₹{(totalCapital / 100).toLocaleString('en-IN')}
           </p>
           <span className="text-[11px] text-[#B9B9B4]">Equity contributions (NOT revenue)</span>
         </div>
-        <div className="rounded-xl border border-[#242426] bg-[#151515] p-5">
+        <div className="rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-[#B9B9B4]">Active Partner Advances</span>
           <p className="mt-2 text-2xl font-bold text-yellow-400" id="total-advances-amount">
             ₹{(totalAdvances / 100).toLocaleString('en-IN')}
@@ -126,30 +126,30 @@ export default function CapitalAdminClient() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* Entries Roster */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-xl border border-[#242426] bg-[#151515] p-6">
+          <div className="rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-[#F3F0E9] flex items-center gap-2">
               <Coins className="h-4 w-4 text-[#C8FF35]" />
               Capital & Advance Ledger ({entries.length})
             </h2>
             <div className="mt-4 overflow-x-auto">
-              <table className="w-full text-left text-xs text-[#B9B9B4]" id="capital-table">
-                <thead className="border-b border-[#242426] text-[10px] uppercase text-gray-500">
+              <table className="w-full min-w-[640px] text-left text-xs text-[#B9B9B4]" id="capital-table">
+                <thead className="border-b border-[#242426] text-[11px] uppercase tracking-wider text-gray-500">
                   <tr>
-                    <th className="pb-3">Partner</th>
-                    <th className="pb-3">Classification</th>
-                    <th className="pb-3">Amount</th>
-                    <th className="pb-3">Note</th>
-                    <th className="pb-3">Date</th>
+                    <th className="pb-3 pr-4 font-semibold">Partner</th>
+                    <th className="pb-3 pr-4 font-semibold">Classification</th>
+                    <th className="pb-3 pr-4 font-semibold">Amount</th>
+                    <th className="pb-3 pr-4 font-semibold">Note</th>
+                    <th className="pb-3 pr-4 font-semibold">Date</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#242426]">
                   {entries.map((ent) => (
                     <tr key={ent.id} className="hover:bg-[#1a1a1d] capital-row" data-entry-id={ent.id}>
-                      <td className="py-3 font-medium text-[#F3F0E9]">
+                      <td className="py-3.5 pr-4 font-medium text-[#F3F0E9]">
                         {ent.partner?.displayName}
                       </td>
-                      <td className="py-3">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      <td className="py-3.5 pr-4">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
                           ent.type === "CAPITAL_CONTRIBUTION"
                             ? "bg-[#C8FF35]/10 text-[#C8FF35]"
                             : "bg-blue-500/10 text-blue-400"
@@ -157,11 +157,11 @@ export default function CapitalAdminClient() {
                           {ent.type}
                         </span>
                       </td>
-                      <td className="py-3 font-bold text-[#F3F0E9]">
+                      <td className="py-3.5 pr-4 font-bold text-[#F3F0E9]">
                         ₹{(Number(ent.amountPaise) / 100).toLocaleString('en-IN')}
                       </td>
-                      <td className="py-3 text-gray-400">{ent.description || "—"}</td>
-                      <td className="py-3 text-gray-500">{new Date(ent.createdAt).toLocaleDateString()}</td>
+                      <td className="py-3.5 pr-4 text-gray-400">{ent.description || "—"}</td>
+                      <td className="py-3.5 pr-4 text-gray-500">{new Date(ent.createdAt).toLocaleDateString()}</td>
                     </tr>
                   ))}
                   {entries.length === 0 && !loading && (
@@ -178,12 +178,12 @@ export default function CapitalAdminClient() {
         </div>
 
         {/* Add Entry Form */}
-        <div className="rounded-xl border border-[#242426] bg-[#151515] p-6">
+        <div className="rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-[#F3F0E9] flex items-center gap-2">
             <Plus className="h-4 w-4 text-[#C8FF35]" />
             Record Capital / Advance
           </h2>
-          <form onSubmit={handleCreateCapital} className="mt-4 space-y-4" id="capital-form">
+          <form onSubmit={handleCreateCapital} className="mt-5 space-y-5" id="capital-form">
             <div>
               <label className="block text-[11px] font-medium text-[#B9B9B4]">Partner</label>
               <select
@@ -191,7 +191,7 @@ export default function CapitalAdminClient() {
                 value={partnerId}
                 onChange={(e) => setPartnerId(e.target.value)}
                 required
-                className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
               >
                 {partners.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -207,7 +207,7 @@ export default function CapitalAdminClient() {
                 id="capital-type-select"
                 value={type}
                 onChange={(e) => setType(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
               >
                 <option value="CAPITAL_CONTRIBUTION">Capital Contribution (Equity)</option>
                 <option value="PARTNER_ADVANCE">Partner Advance (Liability Loan)</option>
@@ -225,7 +225,7 @@ export default function CapitalAdminClient() {
                 onChange={(e) => setAmountRupees(e.target.value)}
                 placeholder="100000"
                 required
-                className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
               />
             </div>
 
@@ -237,14 +237,14 @@ export default function CapitalAdminClient() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="e.g. Initial seed capital contribution"
-                className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+                className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
               />
             </div>
 
             <button
               id="submit-capital-btn"
               type="submit"
-              className="mt-4 w-full rounded-lg bg-[#C8FF35] py-2 text-xs font-semibold text-black hover:bg-[#b8eb28]"
+              className="mt-6 w-full rounded-lg bg-[#C8FF35] py-2.5 text-xs font-semibold text-black hover:bg-[#b8eb28]"
             >
               Post to Partner Financial Account
             </button>

@@ -1,5 +1,8 @@
 import { prisma } from '@/lib/db';
 import { getOperationsSettings } from './settings';
+import { isShiprocketConfigured } from '@/lib/shiprocket/client';
+import { createShipmentForOrder } from '@/lib/shiprocket/service';
+import { ensureShiprocketSettings } from '@/lib/shiprocket/settings';
 
 export interface CourierRateQuery {
   pickupPincode: string;
@@ -102,6 +105,12 @@ export async function getCourierAdapter(): Promise<CourierAdapter> {
  * Creates and tracks shipment for an order.
  */
 export async function dispatchOrderShipment(payload: ShipmentCreatePayload) {
+  // Real Shiprocket (env-configured): create a genuine, idempotent shipment instead of the placeholder adapter.
+  await ensureShiprocketSettings();
+  const ops = await getOperationsSettings();
+  if (ops.courierProvider === 'shiprocket' && isShiprocketConfigured()) {
+    return (await createShipmentForOrder(payload.orderId, { email: 'admin' })).shipment;
+  }
   const adapter = await getCourierAdapter();
   const res = await adapter.createShipment(payload);
 

@@ -24,6 +24,9 @@ import {
 
 import { getRetentionSettings } from '@/lib/retention/settings';
 import { getGiftCardByCode } from '@/lib/retention/giftCards';
+import { LITHOPHANE_PRODUCT_SLUG, type LithophaneInput, type LithophaneSnapshot } from '@/lib/lithophane';
+import type { Caller } from '@/lib/lithophaneAccess';
+import { LithophaneError, resolveLithophaneLine, type ResolvedLine } from '@/lib/lithophaneServer';
 
 export class PricingError extends Error {
   status: number;
@@ -39,6 +42,8 @@ export interface PricingInput {
   quantity: number;
   variantSelections?: Array<{ groupId: string; variantId: string }>;
   customizations?: Record<string, unknown>;
+  /** Custom lithophane configuration. Validated and priced from DB rules; client prices are ignored. */
+  lithophane?: LithophaneInput;
 }
 
 export interface VariantSnapshot {
@@ -88,6 +93,10 @@ export interface PricedLine {
   codEnabled: boolean;
   stockPlan: StockPlan;
   stock: LineStock;
+  /** Frozen custom-lithophane snapshot (present only on lithophane lines). */
+  lithophane?: LithophaneSnapshot;
+  /** Server-only resolution used to queue the PRODUCTION generation at order time. */
+  lithophaneResolved?: ResolvedLine['resolved'];
 }
 
 export interface PricedCart {
@@ -124,7 +133,46 @@ const productInclude = {
 
 type DbProduct = Prisma.ProductGetPayload<{ include: typeof productInclude }>;
 
-function priceOne(product: DbProduct, input: PricingInput): PricedLine {
+function priceLithophane(product: DbProduct, input: PricingInput, quantity: number, litho: ResolvedLine): PricedLine {
+  if (product.id !== litho.productId) {
+    throw new PricingError('Lithophane lines must use the custom lithophane product.');
+  }
+  const p = litho.snapshot.price;
+  const name = `${product.name} - ${litho.snapshot.varietyName}`;
+  const summary: Record<string, string> = {
+    Product: litho.snapshot.varietyName,
+    Size: `${litho.snapshot.sizeName} (${litho.snapshot.widthMm} x ${litho.snapshot.heightMm} mm)`,
+    Photo: `/api/uploads/file/${litho.snapshot.filename}`,
+  };
+  for (const o of litho.snapshot.options) summary[o.label] = o.valueLabel;
+  return {
+    productId: product.id,
+    productName: name,
+    productImage: product.images[0] || '',
+    productSku: product.sku,
+    quantity,
+    basePrice: round2(p.base + p.size + p.customDimensions),
+    variantAdjustment: 0,
+    customizationFee: round2(p.options),
+    unitPrice: p.unitPrice,
+    lineTotal: round2(p.unitPrice * quantity),
+    variantSelections: [],
+    customizations: summary,
+    selectedFinish: null,
+    selectedColor: null,
+    selectedSize: litho.snapshot.sizeName,
+    customizable: true,
+    // Custom / made-to-order: always prepaid. codEligibility() rejects COD on prepaidOnly lines.
+    prepaidOnly: true,
+    codEnabled: false,
+    stockPlan: { productId: null, variantIds: [] },
+    stock: { ok: true, remaining: null, message: null },
+    lithophane: litho.snapshot,
+    lithophaneResolved: litho.resolved,
+  };
+}
+
+function priceOne(product: DbProduct, input: PricingInput, litho?: ResolvedLine): PricedLine {
   const name = product.name;
   const quantity = Number(input.quantity);
   if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QTY) {
@@ -132,6 +180,15 @@ function priceOne(product: DbProduct, input: PricingInput): PricedLine {
   }
   if (!product.isActive || product.isArchived) {
     throw new PricingError(`"${name}" is no longer available.`);
+  }
+
+  if (input.lithophane) {
+    if (!litho) throw new PricingError('Your lithophane could not be verified. Please rebuild it.');
+    return priceLithophane(product, input, quantity, litho);
+  }
+  // The carrier product has price 0: it may ONLY be bought through a verified lithophane configuration.
+  if (product.slug === LITHOPHANE_PRODUCT_SLUG) {
+    throw new PricingError('Custom lithophanes must be built in the Lithophane Builder.');
   }
 
   // ---- Variants: exactly one active selection per group, ids must belong to this product
@@ -284,6 +341,7 @@ export interface PricedCartDetailed {
 export async function priceCartDetailed(
   inputs: PricingInput[],
   client: Pick<typeof prisma, 'product'> = prisma,
+  opts: { lithophaneCaller?: Caller | null } = {},
 ): Promise<PricedCartDetailed> {
   if (!inputs.length) throw new PricingError('Order must contain at least one item.');
   const ids = Array.from(new Set(inputs.map((i) => i.productId)));
@@ -292,14 +350,31 @@ export async function priceCartDetailed(
 
   const lines: Array<PricedLine & { index: number }> = [];
   const issues: LineIssue[] = [];
+
+  // Pre-resolve lithophane lines asynchronously (upload ownership, generation hash, active size/options).
+  const lithoByIndex = new Map<number, ResolvedLine>();
+  const lithoFailed = new Set<number>();
+  for (let index = 0; index < inputs.length; index++) {
+    const input = inputs[index];
+    if (!input.lithophane) continue;
+    try {
+      lithoByIndex.set(index, await resolveLithophaneLine(input.lithophane, Number(input.quantity) || 1, opts.lithophaneCaller ?? null));
+    } catch (e) {
+      lithoFailed.add(index);
+      if (e instanceof LithophaneError) issues.push({ index, message: e.message });
+      else throw e;
+    }
+  }
+
   inputs.forEach((input, index) => {
+    if (lithoFailed.has(index)) return;
     const product = map.get(input.productId);
     if (!product) {
       issues.push({ index, message: `Product not found or no longer available: ${input.productId}` });
       return;
     }
     try {
-      const line = priceOne(product, input);
+      const line = priceOne(product, input, lithoByIndex.get(index));
       lines.push({ ...line, index });
       if (!line.stock.ok && line.stock.message) issues.push({ index, message: line.stock.message });
     } catch (e) {
@@ -370,6 +445,8 @@ export interface CheckoutRequest {
   storeCreditToApply?: number | null;
   giftCardCode?: string | null;
   userId?: string | null;
+  /** Identity of the requester (user id + guest owner cookie) used to verify lithophane photo ownership. */
+  lithophaneCaller?: Caller | null;
 }
 
 export interface CheckoutIssue {
@@ -474,7 +551,7 @@ export async function computeCheckout(
   client: Pick<typeof prisma, 'product' | 'siteSettings' | 'coupon'> = prisma,
 ): Promise<CheckoutComputation> {
   const paymentMethod = req.paymentMethod ?? 'prepaid';
-  const priced = await priceCartDetailed(req.items, client);
+  const priced = await priceCartDetailed(req.items, client, { lithophaneCaller: req.lithophaneCaller ?? null });
   const issues: CheckoutIssue[] = priced.issues.map((i) => ({
     code: /stock/i.test(i.message) ? 'stock' : 'line',
     message: i.message,

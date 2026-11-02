@@ -4,6 +4,14 @@ import { getOrderDetail, safeFilenameFromUrl } from "@/lib/adminQueries";
 import type { OrderStatus } from "@/lib/orderPipeline";
 import { PageHeader, Panel, Badge, StatusBadge, EmptyState, inr, fmtDate } from "@/components/admin/shell/ui";
 import OrderActions from "./OrderActions";
+import LithophaneStage from "./LithophaneStage";
+import { sha256 } from "@/lib/lithophaneAccess";
+import { stageLabel, type LithophaneSnapshot } from "@/lib/lithophane";
+import ShiprocketPanel from "./ShiprocketPanel";
+import { prisma } from "@/lib/db";
+import { isShiprocketConfigured } from "@/lib/shiprocket/client";
+import { ensureShiprocketSettings } from "@/lib/shiprocket/settings";
+import { checkShippable, findActiveShipment } from "@/lib/shiprocket/service";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +42,35 @@ function Artwork({ name, label, mime }: { name: string; label: string; mime?: st
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await ensureShiprocketSettings();
   const detail = await getOrderDetail(id);
   if (!detail) notFound();
   const { order, files } = detail;
 
   const subtotal = order.items.reduce((s, i) => s + (i.unitPrice + i.customizationFee) * i.quantity, 0);
   const knownNames = new Set(files.map((f) => f.filename));
+  const lithoHashes = order.items
+    .map((i) => (i.lithophaneSnapshot as LithophaneSnapshot | null)?.hash)
+    .filter((h): h is string => !!h)
+    .map((h) => sha256(`PRODUCTION:${h}`));
+  const prodGens = lithoHashes.length
+    ? await prisma.lithophaneGeneration.findMany({ where: { hash: { in: lithoHashes }, kind: "PRODUCTION" } })
+    : [];
+  const srActive = await findActiveShipment(prisma, order.id).catch(() => null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const srMeta = (srActive?.metadata && typeof srActive.metadata === "object" ? srActive.metadata : {}) as Record<string, any>;
+  const srShipment = srActive
+    ? {
+        shipmentId: srActive.shipmentId as string | null,
+        srOrderId: srMeta.shiprocketOrderId ? String(srMeta.shiprocketOrderId) : null,
+        awb: srActive.awbNumber as string | null,
+        courierName: srActive.courierName as string | null,
+        status: srActive.status as string,
+        labelUrl: srActive.labelUrl as string | null,
+        pickupScheduledAt: srActive.pickupScheduledAt ? (srActive.pickupScheduledAt as Date).toISOString() : null,
+        events: Array.isArray(srMeta.events) ? srMeta.events : [],
+      }
+    : null;
 
   return (
     <>
@@ -86,6 +117,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                         {[it.selectedFinish && `Finish: ${it.selectedFinish}`, it.selectedColor && `Color: ${it.selectedColor}`, it.selectedSize && `Size: ${it.selectedSize}`, ...variants.map((v) => `${v.group}: ${v.variant}`)].filter(Boolean).join(" · ")}
                       </p>
                     )}
+                    {it.lithophaneSnapshot ? (
+                      <LithophanePanel
+                        itemId={it.id}
+                        stage={it.lithophaneStage ?? "new_order"}
+                        snap={it.lithophaneSnapshot as unknown as LithophaneSnapshot}
+                        prod={prodGens.find((g) => g.hash === sha256(`PRODUCTION:${(it.lithophaneSnapshot as unknown as LithophaneSnapshot).hash}`))}
+                      />
+                    ) : null}
                     {(it as any).jobTickets && (it as any).jobTickets.length > 0 && (
                       <div className="flex flex-wrap items-center gap-2 pt-1">
                         <span className="text-[10px] uppercase font-mono text-gray-500">3D Job Tickets:</span>
@@ -221,6 +260,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               )}
             </dl>
           </Panel>
+          <Panel title="Ship with Shiprocket">
+            <ShiprocketPanel
+              orderId={order.id}
+              configured={isShiprocketConfigured()}
+              blockedReason={checkShippable(order)}
+              shipment={srShipment}
+            />
+          </Panel>
           <Panel title="Actions">
             <OrderActions
               orderId={order.id}
@@ -243,6 +290,42 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       </div>
     </>
+  );
+}
+
+function LithophanePanel({ itemId, stage, snap, prod }: { itemId: string; stage: string; snap: LithophaneSnapshot; prod?: { id: string; status: string; resolution: number } }) {
+  const src = fileSrc(snap.filename);
+  return (
+    <div className="space-y-3 rounded-lg border border-[#C8FF35]/30 bg-[#0B0B0C] p-3" data-testid="admin-lithophane-panel">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#C8FF35]">Custom lithophane</p>
+        <span className="rounded bg-[#242426] px-2 py-0.5 text-[10px] font-mono text-gray-300">Stage: {stageLabel(stage)}</span>
+      </div>
+      <div className="flex flex-wrap gap-4">
+        <a href={src} target="_blank" rel="noreferrer">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={src} alt="Customer photo" data-testid="admin-lithophane-photo" className="h-40 w-40 rounded-lg border border-[#242426] bg-black object-contain" />
+        </a>
+        <dl className="grid min-w-0 flex-1 grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
+          <dt className="text-gray-500">Product type</dt><dd className="text-gray-200">{snap.varietyName}</dd>
+          <dt className="text-gray-500">Size</dt><dd className="text-gray-200">{snap.sizeName}{snap.custom ? " (custom)" : ""}</dd>
+          <dt className="text-gray-500">Dimensions</dt><dd className="text-gray-200">{snap.widthMm} x {snap.heightMm} mm{snap.depthMm ? ` x ${snap.depthMm} mm deep` : ""} · {snap.thicknessMm} mm max thickness</dd>
+          <dt className="text-gray-500">Orientation</dt><dd className="text-gray-200">{snap.orientation}</dd>
+          <dt className="text-gray-500">Crop</dt><dd className="text-gray-200">centre {Math.round(snap.crop.cx * 100)}% / {Math.round(snap.crop.cy * 100)}%, zoom {snap.crop.zoom}x</dd>
+          <dt className="text-gray-500">Preview lighting</dt><dd className="text-gray-200">{snap.lighting}</dd>
+          <dt className="text-gray-500">Options</dt>
+          <dd className="text-gray-200">{snap.options.map((o) => `${o.label}: ${o.valueLabel}`).join(" · ") || "None"}</dd>
+          <dt className="text-gray-500">Customer notes</dt><dd className="whitespace-pre-wrap text-gray-200">{snap.notes || "None"}</dd>
+          <dt className="text-gray-500">Production notes</dt><dd className="text-gray-200">{snap.productionNotes || "None"}</dd>
+          <dt className="text-gray-500">Preview generation</dt><dd className="break-all font-mono text-[11px] text-gray-300">{snap.generationId}</dd>
+          <dt className="text-gray-500">Config hash</dt><dd className="break-all font-mono text-[11px] text-gray-400">{snap.hash.slice(0, 24)}...</dd>
+          <dt className="text-gray-500">Production model</dt>
+          <dd className="text-gray-200">{prod ? `${prod.status} (queued, ${prod.resolution} samples)` : "Not queued"} — no STL exported yet</dd>
+          <dt className="text-gray-500">Frozen price</dt><dd className="text-gray-200">{inr(snap.price.unitPrice)} each (base {inr(snap.price.base)} + size {inr(snap.price.size)} + options {inr(snap.price.options)}{snap.price.customDimensions ? ` + custom ${inr(snap.price.customDimensions)}` : ""})</dd>
+        </dl>
+      </div>
+      <LithophaneStage itemId={itemId} stage={stage} />
+    </div>
   );
 }
 

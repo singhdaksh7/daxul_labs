@@ -49,17 +49,17 @@ export default function OperationsSettingsClient() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6 sm:px-8 sm:py-8">
       <div className="border-b border-[#242426] pb-6">
-        <h1 className="text-xl font-bold tracking-tight text-[#F3F0E9]">Operations Settings</h1>
-        <p className="mt-1 text-xs text-[#B9B9B4]">Feature switches and costing thresholds. Only SUPER_ADMIN can save changes.</p>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-[#F3F0E9]">Operations Settings</h1>
+        <p className="mt-2 text-xs leading-relaxed text-[#B9B9B4]">Feature switches and costing thresholds. Only SUPER_ADMIN can save changes.</p>
       </div>
       {msg && <p role="status" className={`rounded-lg border px-3 py-2 text-xs ${msg.ok ? "border-[#C8FF35]/30 text-[#C8FF35]" : "border-red-500/30 bg-red-500/10 text-red-300"}`}>{msg.text}</p>}
       {!s ? (
         <p className="text-xs text-[#B9B9B4]">Loading…</p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-3 rounded-xl border border-[#242426] bg-[#151515] p-5">
+          <div className="space-y-3 rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
             {TOGGLES.map(([k, label]) => (
               <label key={k} className="flex items-center justify-between text-sm text-[#F3F0E9]">
                 {label}
@@ -67,16 +67,16 @@ export default function OperationsSettingsClient() {
               </label>
             ))}
           </div>
-          <div className="space-y-3 rounded-xl border border-[#242426] bg-[#151515] p-5">
+          <div className="space-y-3 rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
             {NUMBERS.map(([k, label]) => (
               <label key={k} className="block text-xs text-[#B9B9B4]">
                 {label}
-                <input type="number" min={0} step="any" value={Number(s[k] ?? 0)} onChange={(e) => setS({ ...s, [k]: e.target.value })} className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-sm text-[#F3F0E9]" />
+                <input type="number" min={0} step="any" value={Number(s[k] ?? 0)} onChange={(e) => setS({ ...s, [k]: e.target.value })} className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2.5 text-sm text-[#F3F0E9]" />
               </label>
             ))}
             <label className="block text-xs text-[#B9B9B4]">
               Courier provider
-              <input value={String(s.courierProvider ?? "")} onChange={(e) => setS({ ...s, courierProvider: e.target.value })} className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-sm text-[#F3F0E9]" />
+              <input value={String(s.courierProvider ?? "")} onChange={(e) => setS({ ...s, courierProvider: e.target.value })} className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2.5 text-sm text-[#F3F0E9]" />
             </label>
           </div>
         </div>

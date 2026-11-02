@@ -70,9 +70,9 @@ export default function CleanupClient() {
   const keptCount = Object.values(keep).filter(Boolean).length;
 
   return (
-    <div className="space-y-8" id="cleanup-view">
+    <div className="mx-auto w-full max-w-7xl space-y-8 px-4 py-6 sm:px-8 sm:py-8" id="cleanup-view">
       <div className="border-b border-[#242426] pb-6">
-        <h1 className="text-xl font-bold tracking-tight text-[#F3F0E9]">Finance Clean-up</h1>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl text-[#F3F0E9]">Finance Clean-up</h1>
         <p className="mt-2 max-w-3xl text-xs leading-relaxed text-[#B9B9B4]">
           Starts the finance books fresh. Every active expense and EMI is <strong>cancelled</strong> and what it posted to the partner
           accounts is reversed, so balances go back to zero. Cancelled items stay in the audit trail. Partners you untick are removed.
@@ -99,7 +99,7 @@ export default function CleanupClient() {
 
       {preview && (
         <>
-          <div className="space-y-4 rounded-xl border border-[#242426] bg-[#151515] p-6">
+          <div className="space-y-4 rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-[#F3F0E9]">Partners: tick the ones to KEEP</h2>
             <div className="space-y-3">
               {preview.partners.map((p) => (
@@ -118,7 +118,7 @@ export default function CleanupClient() {
             </div>
           </div>
 
-          <div className="space-y-4 rounded-xl border border-[#242426] bg-[#151515] p-6">
+          <div className="space-y-4 rounded-xl border border-[#242426] bg-[#151515] p-5 sm:p-6">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-[#F3F0E9]">Will be cancelled ({preview.expenses.length})</h2>
             <div className="space-y-2">
               {preview.expenses.map((e) => (
@@ -137,7 +137,7 @@ export default function CleanupClient() {
             )}
           </div>
 
-          <div className="space-y-4 rounded-xl border border-red-500/30 bg-[#151515] p-6">
+          <div className="space-y-4 rounded-xl border border-red-500/30 bg-[#151515] p-5 sm:p-6">
             <p className="text-xs text-[#B9B9B4]">Keeping <strong className="text-[#F3F0E9]">{keptCount}</strong> partner(s). Type <code className="text-[#C8FF35]">CLEAN UP</code> to confirm.</p>
             <div className="flex flex-wrap items-center gap-3">
               <input id="cleanup-confirm" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="CLEAN UP" className="w-48 rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9]" />

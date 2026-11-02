@@ -1,5 +1,6 @@
 "use client";
 
+import LithophaneCartSummary from "@/components/lithophane/LithophaneCartSummary";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/storeContext";
@@ -141,6 +142,8 @@ export default function CartDrawer() {
                         {item.variantSelections.map((v) => `${v.groupName}: ${v.variantName}`).join(" • ")}
                       </p>
                     )}
+
+                    {item.lithophane && <LithophaneCartSummary data={item.lithophane} />}
 
                     {/* Customization details */}
                     {item.customizationDetails && item.customizationDetails.length > 0 && (

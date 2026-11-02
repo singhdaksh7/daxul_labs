@@ -183,7 +183,8 @@ const productSelect = {
   },
 } satisfies Prisma.ProductSelect;
 
-const liveProductWhere = { isArchived: false, isActive: true } as const;
+// The custom-lithophane line product is a cart/order carrier only; it is sold via /customize/lithophane, not listed.
+const liveProductWhere = { isArchived: false, isActive: true, slug: { not: 'custom-lithophane' } } as const;
 
 type ProductRow = {
   id: string;

@@ -19,6 +19,7 @@ import type {
   SiteSettings,
   ThemeSettings,
 } from './types';
+import type { CartLithophane } from './lithophane';
 
 export interface CartVariantSelection {
   groupId: string;
@@ -53,6 +54,8 @@ export interface CartItem {
   prepaidOnly: boolean;
   codEnabled: boolean;
   customizable: boolean;
+  /** Custom lithophane configuration (display snapshot; the server re-validates and re-prices). */
+  lithophane?: CartLithophane;
 }
 
 export interface CartContextType {
@@ -86,10 +89,18 @@ function lineSignature(i: Omit<CartItem, 'id' | 'quantity'>): string {
     .sort()
     .map((k) => `${k}=${i.customizations[k]}`)
     .join('|');
-  return `${i.productId}#${v}#${c}`;
+  const l = i.lithophane;
+  // Distinct lithophane configs must never merge: include the generation hash, lighting, notes and every option.
+  const lp = l
+    ? `#lp:${l.hash}:${l.lighting ?? 'off'}:${l.notes ?? ''}:${Object.keys(l.options)
+        .sort()
+        .map((k) => `${k}=${l.options[k]}`)
+        .join(',')}`
+    : '';
+  return `${i.productId}#${v}#${c}${lp}`;
 }
 
-function sanitizeCart(raw: unknown): CartItem[] {
+export function sanitizeCart(raw: unknown): CartItem[] {
   if (!Array.isArray(raw)) return [];
   return raw.filter(
     (x): x is CartItem =>
