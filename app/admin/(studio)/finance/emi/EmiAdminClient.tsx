@@ -19,6 +19,7 @@ export default function EmiAdminClient() {
   const [downPaymentRupees, setDownPaymentRupees] = useState("");
   const [totalTenureMonths, setTotalTenureMonths] = useState("6");
   const [monthlyInstallmentRupees, setMonthlyInstallmentRupees] = useState("");
+  const [firstEmiDate, setFirstEmiDate] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 10); });
 
   const fetchData = async () => {
     setLoading(true);
@@ -62,21 +63,19 @@ export default function EmiAdminClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
-          category,
-          classification,
-          financedByPartnerId,
-          totalCostRupees: parseFloat(totalCostRupees),
-          downPaymentRupees: parseFloat(downPaymentRupees),
-          totalTenureMonths: parseInt(totalTenureMonths, 10),
-          monthlyInstallmentRupees: parseFloat(monthlyInstallmentRupees),
-          startDate: new Date().toISOString(),
+          paidByPartnerId: financedByPartnerId,
+          purchasePriceRupees: parseFloat(totalCostRupees),
+          downPaymentRupees: parseFloat(downPaymentRupees) || 0,
+          totalEmiCount: parseInt(totalTenureMonths, 10),
+          frequency: "MONTHLY",
+          firstEmiDate: firstEmiDate ? new Date(firstEmiDate).toISOString() : new Date().toISOString(),
         }),
       });
 
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || "Failed to create EMI schedule");
 
-      setSuccess(`EMI Schedule "${d.schedule.title}" created with ${d.schedule.installments?.length || 6} installments.`);
+      setSuccess(`EMI Schedule "${d.expense?.title ?? title}" created with ${d.installments?.length ?? 0} installments.`);
       setTitle("");
       setTotalCostRupees("");
       setDownPaymentRupees("");
@@ -153,13 +152,13 @@ export default function EmiAdminClient() {
                 <div key={sch.id} className="rounded-lg border border-[#242426] bg-[#0B0B0C] p-4 text-xs emi-schedule-card" data-schedule-id={sch.id}>
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-bold text-[#F3F0E9] text-sm">{sch.title}</h3>
+                      <h3 className="font-bold text-[#F3F0E9] text-sm">{sch.expense?.title}</h3>
                       <p className="text-[11px] text-gray-400">
-                        Financed by: <span className="text-[#C8FF35]">{sch.financedByPartner?.displayName}</span> • {sch.totalTenureMonths} Months
+                        Financed by: <span className="text-[#C8FF35]">{sch.expense?.paidByPartner?.displayName}</span> • {sch.totalEmiCount} Months
                       </p>
                     </div>
                     <span className="font-bold text-base text-[#F3F0E9]">
-                      ₹{(Number(sch.totalCostPaise) / 100).toLocaleString('en-IN')}
+                      ₹{(Number(sch.purchasePricePaise) / 100).toLocaleString('en-IN')}
                     </span>
                   </div>
 
@@ -174,7 +173,7 @@ export default function EmiAdminClient() {
                     </div>
                     <div>
                       <span className="text-gray-500">Monthly EMI:</span>
-                      <p className="font-medium text-[#C8FF35]">₹{(Number(sch.monthlyInstallmentPaise) / 100).toLocaleString('en-IN')}</p>
+                      <p className="font-medium text-[#C8FF35]">₹{(Math.round(Number(sch.financedAmountPaise) / Math.max(1, Number(sch.totalEmiCount)) ) / 100).toLocaleString('en-IN')}</p>
                     </div>
                   </div>
 
@@ -185,7 +184,7 @@ export default function EmiAdminClient() {
                       {sch.installments?.slice(0, 3).map((inst: any) => (
                         <div key={inst.id} className="flex justify-between text-[11px] text-gray-400">
                           <span>Month {inst.installmentNumber} (Due: {new Date(inst.dueDate).toLocaleDateString()})</span>
-                          <span className="text-white font-medium">₹{(Number(inst.installmentAmountPaise) / 100).toFixed(2)}</span>
+                          <span className="text-white font-medium">₹{(Number(inst.amountPaise) / 100).toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
@@ -261,18 +260,28 @@ export default function EmiAdminClient() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-medium text-[#B9B9B4]">Monthly EMI (₹)</label>
+                <label className="block text-[10px] font-medium text-[#B9B9B4]">Monthly EMI (₹) <span className="text-gray-500">- auto-calculated, optional</span></label>
                 <input
                   id="emi-monthly-input"
                   type="number"
                   step="0.01"
                   value={monthlyInstallmentRupees}
                   onChange={(e) => setMonthlyInstallmentRupees(e.target.value)}
-                  placeholder="10000"
-                  required
+                  placeholder="calculated automatically"
                   className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-2 py-1.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-medium text-[#B9B9B4]">First EMI Due Date</label>
+              <input
+                id="emi-first-date"
+                type="date"
+                value={firstEmiDate}
+                onChange={(e) => setFirstEmiDate(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-2 py-1.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+              />
             </div>
 
             <div>
