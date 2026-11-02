@@ -71,6 +71,7 @@ model User {
   accounts                Account[]
   sessions                Session[]
   passkeys                UserPasskey[]
+  businessPartner         BusinessPartner?
   createdAt               DateTime       @default(now())
   updatedAt               DateTime       @updatedAt
 }
@@ -1730,6 +1731,373 @@ model OperationsSettings {
   targetGrossMarginPercent  Float    @default(65.0)
   createdAt                 DateTime @default(now())
   updatedAt                 DateTime @default(now())
+}
+
+// ==========================================
+// PARTNER FINANCE, EXPENSES, EMI & SETTLEMENTS
+// ==========================================
+
+model BusinessPartner {
+  id                         String                    @id @default(cuid())
+  userId                     String                    @unique
+  user                       User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName                String
+  email                      String                    @unique
+  phone                      String?
+  isActive                   Boolean                   @default(true)
+  ownershipPercentage        Float                     @default(33.333333)
+  expenseSplitPercentage     Float                     @default(33.333333)
+  profitSplitPercentage      Float                     @default(33.333333)
+  isPrimarySettlementPartner Boolean                   @default(false)
+  joinedAt                   DateTime                  @default(now())
+  leftAt                     DateTime?
+  notes                      String?                   @db.Text
+  createdAt                  DateTime                  @default(now())
+  updatedAt                  DateTime                  @updatedAt
+  financialAccount           PartnerFinancialAccount?
+  ledgerEntries              PartnerLedgerEntry[]
+  expensesPaid               BusinessExpense[]         @relation("ExpensePayer")
+  expenseShares              PartnerExpenseShare[]
+  emiObligations             PartnerEmiObligation[]    @relation("PartnerObligations")
+  emiObligationsReceivable   PartnerEmiObligation[]    @relation("PayableToPartner")
+  settlementsSent            PartnerSettlement[]       @relation("SettlementPayer")
+  settlementsReceived        PartnerSettlement[]       @relation("SettlementReceiver")
+  capitalContributions       PartnerCapitalEntry[]
+  withdrawals                PartnerWithdrawal[]
+  profitAllocations          PartnerProfitAllocation[]
+
+  @@index([isActive])
+}
+
+model PartnerFinancialAccount {
+  id                           String          @id @default(cuid())
+  partnerId                    String          @unique
+  partner                      BusinessPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  capitalContributedPaise      BigInt          @default(0)
+  expensePaidPersonallyPaise   BigInt          @default(0)
+  amountPayablePaise           BigInt          @default(0)
+  amountReceivablePaise        BigInt          @default(0)
+  profitAllocatedPaise         BigInt          @default(0)
+  profitWithdrawnPaise         BigInt          @default(0)
+  reimbursementDuePaise        BigInt          @default(0)
+  netSettlementPositionPaise   BigInt          @default(0)
+  updatedAt                    DateTime        @updatedAt
+
+  @@index([partnerId])
+}
+
+model PartnerLedgerEntry {
+  id               String          @id @default(cuid())
+  partnerId        String
+  partner          BusinessPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  type             String          // CAPITAL_CONTRIBUTION, EXPENSE_PAID, EXPENSE_SHARE_DUE, EMI_SHARE_DUE, REIMBURSEMENT, PARTNER_SETTLEMENT, PROFIT_ALLOCATION, PROFIT_WITHDRAWAL, PARTNER_ADVANCE, ADVANCE_REPAYMENT, REFUND_ADJUSTMENT, MANUAL_ADJUSTMENT, REVERSAL
+  amountPaise      BigInt
+  direction        String          // DEBIT, CREDIT
+  balanceAfterPaise BigInt         @default(0)
+  expenseId        String?
+  expense          BusinessExpense? @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+  emiInstallmentId String?
+  orderId          String?
+  settlementId     String?
+  settlement       PartnerSettlement? @relation(fields: [settlementId], references: [id], onDelete: SetNull)
+  description      String          @db.Text
+  createdBy        String
+  createdAt        DateTime        @default(now())
+  reversedEntryId  String?
+  metadata         Json?
+
+  @@index([partnerId, createdAt])
+  @@index([type])
+}
+
+enum ExpenseCategory {
+  THREE_D_PRINTER
+  FILAMENT
+  RAW_MATERIAL
+  ELECTRONICS
+  PACKAGING
+  COURIER
+  SHIPPING
+  SOFTWARE
+  DOMAIN
+  HOSTING
+  ADS
+  MARKETING
+  RENT
+  ELECTRICITY
+  INTERNET
+  TOOLS
+  EQUIPMENT
+  MAINTENANCE
+  OFFICE
+  TRAVEL
+  PROFESSIONAL_SERVICES
+  TAX
+  OTHER
+}
+
+enum AccountingClassification {
+  OPERATING_EXPENSE
+  CAPITAL_EXPENSE
+  INVENTORY_PURCHASE
+  ORDER_DIRECT_COST
+  PARTNER_ADVANCE
+  OTHER
+}
+
+model BusinessExpense {
+  id                   String                   @id @default(cuid())
+  expenseNumber        String                   @unique // DXL-EXP-YYYYMM-XXXX
+  title                String
+  description          String?                  @db.Text
+  category             ExpenseCategory          @default(OTHER)
+  classification       AccountingClassification @default(OPERATING_EXPENSE)
+  vendor               String?
+  invoiceNumber        String?
+  expenseDate          DateTime                 @default(now())
+  totalAmountPaise     BigInt
+  taxAmountPaise       BigInt                   @default(0)
+  paymentMethod        String                   @default("UPI") // UPI, BANK_TRANSFER, CARD, CASH
+  paidByPartnerId      String?
+  paidByPartner        BusinessPartner?         @relation("ExpensePayer", fields: [paidByPartnerId], references: [id], onDelete: SetNull)
+  isBusinessAccountPaid Boolean                 @default(false)
+  isEmi                Boolean                  @default(false)
+  splitMethod          String                   @default("EQUAL") // EQUAL, OWNERSHIP_PERCENTAGE, CUSTOM_PERCENTAGE, CUSTOM_AMOUNT
+  status               String                   @default("ACTIVE") // DRAFT, ACTIVE, FULLY_SETTLED, PARTIALLY_SETTLED, CANCELLED
+  notes                String?                  @db.Text
+  createdBy            String
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
+  shares               PartnerExpenseShare[]
+  emiSchedule          ExpenseEmiSchedule?
+  attachments          ExpenseAttachment[]
+  ledgerEntries        PartnerLedgerEntry[]
+
+  @@index([category, status])
+  @@index([expenseDate])
+}
+
+model PartnerExpenseShare {
+  id                 String          @id @default(cuid())
+  expenseId          String
+  expense            BusinessExpense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  partnerId          String
+  partner            BusinessPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  percentageSnapshot Float
+  shareAmountPaise   BigInt
+  paidAmountPaise    BigInt          @default(0)
+  remainingPaise     BigInt
+  status             String          @default("UNPAID") // UNPAID, PARTIALLY_PAID, PAID, WAIVED
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  allocations        PartnerSettlementAllocation[]
+
+  @@unique([expenseId, partnerId])
+  @@index([partnerId, status])
+}
+
+model ExpenseAttachment {
+  id           String          @id @default(cuid())
+  expenseId    String
+  expense      BusinessExpense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  type         String          // INVOICE, BILL, RECEIPT, EMI_AGREEMENT, PAYMENT_PROOF, OTHER
+  fileUrl      String
+  fileName     String
+  fileSize     Int?
+  mimeType     String?
+  uploadedBy   String
+  uploadedAt   DateTime        @default(now())
+  notes        String?
+
+  @@index([expenseId])
+}
+
+model ExpenseEmiSchedule {
+  id                   String                  @id @default(cuid())
+  expenseId            String                  @unique
+  expense              BusinessExpense         @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  purchasePricePaise   BigInt
+  downPaymentPaise     BigInt                  @default(0)
+  financedAmountPaise  BigInt
+  totalEmiCount        Int
+  frequency            String                  @default("MONTHLY") // MONTHLY, QUARTERLY
+  firstEmiDate         DateTime
+  interestRatePercent  Float                   @default(0)
+  processingFeePaise   BigInt                  @default(0)
+  lenderName           String?
+  createdAt            DateTime                @default(now())
+  installments         ExpenseEmiInstallment[]
+}
+
+model ExpenseEmiInstallment {
+  id                String                 @id @default(cuid())
+  emiScheduleId     String
+  emiSchedule       ExpenseEmiSchedule     @relation(fields: [emiScheduleId], references: [id], onDelete: Cascade)
+  installmentNumber Int
+  dueDate           DateTime
+  principalPaise    BigInt                 @default(0)
+  interestPaise     BigInt                 @default(0)
+  amountPaise       BigInt
+  status            String                 @default("UNPAID") // PAID, PARTIALLY_PAID, UNPAID, OVERDUE, WAIVED
+  paidAt            DateTime?
+  amountPaidPaise   BigInt                 @default(0)
+  proofMediaUrl     String?
+  notes             String?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  partnerObligations PartnerEmiObligation[]
+
+  @@unique([emiScheduleId, installmentNumber])
+  @@index([dueDate, status])
+}
+
+model PartnerEmiObligation {
+  id                 String                @id @default(cuid())
+  emiInstallmentId   String
+  emiInstallment     ExpenseEmiInstallment @relation(fields: [emiInstallmentId], references: [id], onDelete: Cascade)
+  partnerId          String
+  partner            BusinessPartner       @relation("PartnerObligations", fields: [partnerId], references: [id], onDelete: Cascade)
+  payableToPartnerId String?
+  payableToPartner   BusinessPartner?      @relation("PayableToPartner", fields: [payableToPartnerId], references: [id], onDelete: SetNull)
+  shareAmountPaise   BigInt
+  amountPaidPaise    BigInt                @default(0)
+  remainingPaise     BigInt
+  dueDate            DateTime
+  status             String                @default("UPCOMING") // UPCOMING, DUE, PARTIALLY_PAID, PAID, OVERDUE
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  allocations        PartnerSettlementAllocation[]
+
+  @@unique([emiInstallmentId, partnerId])
+  @@index([partnerId, status])
+  @@index([payableToPartnerId, status])
+}
+
+model PartnerSettlement {
+  id               String                        @id @default(cuid())
+  settlementNumber String                        @unique // DXL-STL-YYYYMM-XXXX
+  fromPartnerId    String
+  fromPartner      BusinessPartner               @relation("SettlementPayer", fields: [fromPartnerId], references: [id], onDelete: Cascade)
+  toPartnerId      String
+  toPartner        BusinessPartner               @relation("SettlementReceiver", fields: [toPartnerId], references: [id], onDelete: Cascade)
+  amountPaise      BigInt
+  paymentDate      DateTime                      @default(now())
+  paymentMethod    String                        @default("UPI") // UPI, BANK_TRANSFER, CASH
+  referenceNumber  String?
+  notes            String?                       @db.Text
+  status           String                        @default("PENDING_VERIFICATION") // PENDING_VERIFICATION, VERIFIED, REJECTED, REVERSED
+  proofMediaUrl    String?
+  rejectionReason  String?
+  createdBy        String
+  verifiedBy       String?
+  verifiedAt       DateTime?
+  createdAt        DateTime                      @default(now())
+  updatedAt        DateTime                      @updatedAt
+  allocations      PartnerSettlementAllocation[]
+  ledgerEntries    PartnerLedgerEntry[]
+
+  @@index([fromPartnerId, status])
+  @@index([toPartnerId, status])
+}
+
+model PartnerSettlementAllocation {
+  id                   String                @id @default(cuid())
+  settlementId         String
+  settlement           PartnerSettlement     @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+  expenseShareId       String?
+  expenseShare         PartnerExpenseShare?  @relation(fields: [expenseShareId], references: [id], onDelete: SetNull)
+  emiObligationId      String?
+  emiObligation        PartnerEmiObligation? @relation(fields: [emiObligationId], references: [id], onDelete: SetNull)
+  amountAllocatedPaise BigInt
+  createdAt            DateTime              @default(now())
+
+  @@index([settlementId])
+  @@index([expenseShareId])
+  @@index([emiObligationId])
+}
+
+model PartnerCapitalEntry {
+  id          String          @id @default(cuid())
+  partnerId   String
+  partner     BusinessPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  type        String          @default("CAPITAL_CONTRIBUTION") // CAPITAL_CONTRIBUTION, PARTNER_ADVANCE
+  amountPaise BigInt
+  date        DateTime        @default(now())
+  method      String          @default("BANK_TRANSFER")
+  reference   String?
+  notes       String?         @db.Text
+  createdBy   String
+  createdAt   DateTime        @default(now())
+
+  @@index([partnerId, type])
+}
+
+model PartnerWithdrawal {
+  id          String          @id @default(cuid())
+  partnerId   String
+  partner     BusinessPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  type        String          @default("PROFIT_WITHDRAWAL") // PROFIT_WITHDRAWAL, CAPITAL_WITHDRAWAL, REIMBURSEMENT, ADVANCE_REPAYMENT
+  amountPaise BigInt
+  date        DateTime        @default(now())
+  status      String          @default("COMPLETED") // PENDING, COMPLETED, REJECTED
+  reason      String          @db.Text
+  proofUrl    String?
+  approvedBy  String?
+  createdAt   DateTime        @default(now())
+
+  @@index([partnerId, type])
+}
+
+model ProfitPeriod {
+  id                    String                    @id @default(cuid())
+  periodName            String                    // e.g. "November 2026"
+  startDate             DateTime
+  endDate               DateTime
+  totalRevenuePaise     BigInt                    @default(0)
+  totalRefundsPaise     BigInt                    @default(0)
+  totalCogsPaise        BigInt                    @default(0)
+  operatingExpensePaise BigInt                    @default(0)
+  grossProfitPaise      BigInt                    @default(0)
+  netDistributablePaise BigInt                    @default(0)
+  status                String                    @default("OPEN") // OPEN, REVIEW, LOCKED, DISTRIBUTED
+  lockedBy              String?
+  lockedAt              DateTime?
+  notes                 String?                   @db.Text
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  allocations           PartnerProfitAllocation[]
+
+  @@index([status])
+  @@index([startDate, endDate])
+}
+
+model PartnerProfitAllocation {
+  id                    String          @id @default(cuid())
+  profitPeriodId        String
+  profitPeriod          ProfitPeriod    @relation(fields: [profitPeriodId], references: [id], onDelete: Cascade)
+  partnerId             String
+  partner               BusinessPartner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  profitPercentSnapshot Float
+  allocatedAmountPaise  BigInt
+  withdrawnAmountPaise  BigInt          @default(0)
+  createdAt             DateTime        @default(now())
+
+  @@unique([profitPeriodId, partnerId])
+  @@index([partnerId])
+}
+
+model FinanceSettings {
+  id                         String   @id @default("default")
+  equalSplitEnabled          Boolean  @default(true)
+  primarySettlementPartnerId String?
+  emiRemindersEnabled        Boolean  @default(true)
+  financialYearStartMonth    Int      @default(4) // April
+  currencySymbol             String   @default("₹")
+  currencyCode               String   @default("INR")
+  profitPeriodFrequency      String   @default("MONTHLY") // MONTHLY, QUARTERLY
+  superAdminApprovalRequired Boolean  @default(true)
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @default(now())
 }
 
 
