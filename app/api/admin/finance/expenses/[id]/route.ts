@@ -1,3 +1,5 @@
+import { cancelBusinessExpense, ExpenseCancelError } from '@/lib/finance/expenses';
+import { canManageEmi } from '@/lib/finance/emiAuth';
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -119,13 +121,21 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: 'A cancellation reason is required (minimum 3 characters)' }, { status: 400 });
   }
 
-  const updated = await prisma.businessExpense.update({
-    where: { id },
-    data: {
-      status: 'CANCELLED',
-      notes: parsed.data.reason,
-    },
-  });
+  const actor = check.session?.user as { id?: string } | undefined;
+  const target = await prisma.businessExpense.findUnique({ where: { id }, select: { paidByPartnerId: true } });
+  if (!target) return NextResponse.json({ error: 'Expense not found' }, { status: 404 });
+  if (!(await canManageEmi({ id: actor?.id, role: check.role }, target.paidByPartnerId))) {
+    return NextResponse.json({ error: 'Only the paying partner or a SUPER_ADMIN can cancel an expense' }, { status: 403 });
+  }
+
+  let updated;
+  try {
+    updated = await cancelBusinessExpense({ expenseId: id, reason: parsed.data.reason, createdBy: actor?.id || 'admin' });
+  } catch (err) {
+    if (err instanceof ExpenseCancelError) return NextResponse.json({ error: err.message }, { status: err.status });
+    console.error('Expense cancel failed', err);
+    return NextResponse.json({ error: 'Failed to cancel expense' }, { status: 500 });
+  }
 
   const adminUserId = (check.session?.user as any)?.id || 'admin';
   const adminUserEmail = check.session?.user?.email || 'admin@daxullabs.com';
@@ -142,7 +152,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     },
   });
 
-  return NextResponse.json({ success: true, expense: updated });
+  return NextResponse.json({ success: true, expense: JSON.parse(JSON.stringify(updated, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))) });
 }
 
 

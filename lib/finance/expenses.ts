@@ -128,3 +128,83 @@ export async function createBusinessExpense(
   return await prisma.$transaction(runner);
 }
 
+
+export class ExpenseCancelError extends Error {
+  status: number;
+  constructor(message: string, status = 400) {
+    super(message);
+    this.status = status;
+  }
+}
+
+/**
+ * Cancels an expense AND reverses everything it posted to the partner accounts (immutable REVERSAL ledger
+ * entries, accumulators put back), so balances are correct afterwards. Refused when any partner has already
+ * paid towards it, or when it is an EMI purchase (those have their own installment trail).
+ */
+export async function cancelBusinessExpense(params: { expenseId: string; reason: string; createdBy: string }) {
+  return await prisma.$transaction(async (tx) => {
+    const expense = await tx.businessExpense.findUnique({
+      where: { id: params.expenseId },
+      include: { shares: true },
+    });
+    if (!expense) throw new ExpenseCancelError('Expense not found', 404);
+    if (expense.status === 'CANCELLED') throw new ExpenseCancelError('This expense is already cancelled');
+    if (expense.isEmi) throw new ExpenseCancelError('EMI purchases cannot be cancelled here. Ask for help to unwind an EMI.');
+    if (expense.shares.some((s) => s.paidAmountPaise > BigInt(0))) {
+      throw new ExpenseCancelError('A partner has already paid towards this expense, so it cannot be cancelled.');
+    }
+
+    const entries = await tx.partnerLedgerEntry.findMany({
+      where: { expenseId: expense.id, type: { in: ['EXPENSE_PAID', 'EXPENSE_SHARE_DUE', 'EMI_SHARE_DUE'] } },
+    });
+    const already = await tx.partnerLedgerEntry.findMany({
+      where: { type: 'REVERSAL', reversedEntryId: { in: entries.map((e) => e.id) } },
+      select: { reversedEntryId: true },
+    });
+    const done = new Set(already.map((a) => a.reversedEntryId));
+
+    for (const e of entries) {
+      if (done.has(e.id)) continue;
+      const account = await tx.partnerFinancialAccount.findUnique({ where: { partnerId: e.partnerId } });
+      if (!account) throw new ExpenseCancelError('Partner account missing; cannot reverse', 500);
+      // Original CREDIT added to the net position, DEBIT subtracted. The reversal does the opposite.
+      const reverseDirection = e.direction === 'CREDIT' ? 'DEBIT' : 'CREDIT';
+      const delta = reverseDirection === 'CREDIT' ? e.amountPaise : -e.amountPaise;
+      const newNet = account.netSettlementPositionPaise + delta;
+      await tx.partnerLedgerEntry.create({
+        data: {
+          partnerId: e.partnerId,
+          type: 'REVERSAL',
+          amountPaise: e.amountPaise,
+          direction: reverseDirection,
+          balanceAfterPaise: newNet,
+          description: `Reversal (expense ${expense.expenseNumber} cancelled): ${e.description}`,
+          createdBy: params.createdBy,
+          expenseId: expense.id,
+          reversedEntryId: e.id,
+        },
+      });
+      await tx.partnerFinancialAccount.update({
+        where: { partnerId: e.partnerId },
+        data:
+          e.type === 'EXPENSE_PAID'
+            ? {
+                netSettlementPositionPaise: newNet,
+                expensePaidPersonallyPaise: { decrement: e.amountPaise },
+                amountReceivablePaise: { decrement: e.amountPaise },
+              }
+            : { netSettlementPositionPaise: newNet, amountPayablePaise: { decrement: e.amountPaise } },
+      });
+    }
+
+    await tx.partnerExpenseShare.updateMany({
+      where: { expenseId: expense.id },
+      data: { status: 'WAIVED', remainingPaise: BigInt(0) },
+    });
+    return await tx.businessExpense.update({
+      where: { id: expense.id },
+      data: { status: 'CANCELLED', notes: params.reason },
+    });
+  });
+}

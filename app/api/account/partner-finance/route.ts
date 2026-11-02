@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     include: {
       financialAccount: true,
       expenseShares: {
-        where: { status: { not: 'PAID' } },
+        where: { status: { notIn: ['PAID', 'WAIVED'] } },
         include: {
           expense: {
             select: { id: true, expenseNumber: true, title: true, expenseDate: true, category: true },

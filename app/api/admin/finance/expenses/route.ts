@@ -16,13 +16,14 @@ export async function GET(req: NextRequest) {
   const expenses = await prisma.businessExpense.findMany({
     where: q
       ? {
+          status: { not: 'CANCELLED' },
           OR: [
             { title: { contains: q, mode: 'insensitive' } },
             { vendor: { contains: q, mode: 'insensitive' } },
             { expenseNumber: { contains: q, mode: 'insensitive' } },
           ],
         }
-      : {},
+      : { status: { not: 'CANCELLED' } },
     include: {
       paidByPartner: { select: { id: true, displayName: true } },
       shares: { include: { partner: { select: { id: true, displayName: true } } } },
