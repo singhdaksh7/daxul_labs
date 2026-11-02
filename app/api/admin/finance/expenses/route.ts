@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
       shares: { include: { partner: { select: { id: true, displayName: true } } } },
       emiSchedule: true,
       attachments: true,
+      revenueRecoveries: { orderBy: { recoveredAt: 'desc' } },
     },
     orderBy: { expenseDate: 'desc' },
     take: 50,
@@ -78,6 +79,7 @@ const expenseSchema = z.object({
   paidByPartnerId: z.string().optional().nullable(),
   isBusinessAccountPaid: z.boolean().optional(),
   notes: z.string().optional().nullable(),
+  recoveryMode: z.enum(['PARTNER_SPLIT', 'REVENUE']).optional(),
 });
 
 export async function POST(req: NextRequest) {

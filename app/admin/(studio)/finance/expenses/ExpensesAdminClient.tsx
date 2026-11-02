@@ -19,6 +19,7 @@ export default function ExpensesAdminClient() {
   const [paidByPartnerId, setPaidByPartnerId] = useState("");
   const [totalAmountRupees, setTotalAmountRupees] = useState("");
   const [splitType, setSplitType] = useState("EQUAL");
+  const [recoveryMode, setRecoveryMode] = useState("PARTNER_SPLIT");
 
   const fetchData = async () => {
     setLoading(true);
@@ -66,6 +67,7 @@ export default function ExpensesAdminClient() {
           category,
           classification,
           isBusinessAccountPaid: paymentSource === "BUSINESS_ACCOUNT",
+          recoveryMode,
           paidByPartnerId: paymentSource === "PARTNER_PAID" ? paidByPartnerId : undefined,
           totalAmountRupees: parseFloat(totalAmountRupees),
         }),
@@ -151,7 +153,15 @@ export default function ExpensesAdminClient() {
                       </td>
                       <td className="py-3.5 pr-4">
                         <div className="space-y-0.5 text-[11px]">
-                          {exp.partnerShares?.map((s: any) => (
+                          {exp.recoveryMode === "REVENUE" && (
+                            <div className="space-y-1">
+                              <span className="inline-flex rounded-full border border-[#C8FF35]/30 bg-[#C8FF35]/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-[#C8FF35]">From revenue</span>
+                              <p className="text-gray-400">
+                                Recovered {"\u20b9"}{((exp.revenueRecoveries || []).reduce((a: number, r: any) => a + Number(r.amountPaise), 0) / 100).toLocaleString("en-IN")} of {"\u20b9"}{(Number(exp.totalAmountPaise) / 100).toLocaleString("en-IN")}
+                              </p>
+                            </div>
+                          )}
+                          {(exp.shares || exp.partnerShares)?.map((s: any) => (
                             <div key={s.id} className="flex justify-between gap-2">
                               <span>{s.partner?.displayName}:</span>
                               <span className="text-gray-300">₹{(Number(s.shareAmountPaise) / 100).toFixed(2)}</span>
@@ -275,6 +285,22 @@ export default function ExpensesAdminClient() {
                   <option value="OWNERSHIP_PROPORTIONAL">Ownership Split</option>
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-[#B9B9B4]">Who bears this cost?</label>
+              <select
+                id="expense-recovery-select"
+                value={recoveryMode}
+                onChange={(e) => {
+                  setRecoveryMode(e.target.value);
+                  if (e.target.value === "REVENUE") setPaymentSource("PARTNER_PAID");
+                }}
+                className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+              >
+                <option value="PARTNER_SPLIT">Split between all partners</option>
+                <option value="REVENUE">Recover from business revenue (payer is repaid from sales)</option>
+              </select>
             </div>
 
             {paymentSource === "PARTNER_PAID" && (

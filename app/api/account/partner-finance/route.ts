@@ -74,11 +74,21 @@ export async function GET(req: NextRequest) {
       expense: { status: { not: 'CANCELLED' } },
       OR: [
         { expense: { paidByPartnerId: partner.id } },
+        // Revenue-recovered EMIs have no partner shares, but every partner can see them.
+        { expense: { recoveryMode: 'REVENUE' } },
         { installments: { some: { partnerObligations: { some: { partnerId: partner.id } } } } },
       ],
     },
     include: {
-      expense: { select: { title: true, expenseNumber: true, paidByPartner: { select: { id: true, displayName: true } } } },
+      expense: {
+        select: {
+          title: true,
+          expenseNumber: true,
+          recoveryMode: true,
+          paidByPartner: { select: { id: true, displayName: true } },
+          revenueRecoveries: { select: { amountPaise: true } },
+        },
+      },
       installments: {
         orderBy: { installmentNumber: 'asc' },
         include: { partnerObligations: { include: { partner: { select: { id: true, displayName: true } } } } },
@@ -92,6 +102,8 @@ export async function GET(req: NextRequest) {
     expenseNumber: sch.expense.expenseNumber,
     payer: sch.expense.paidByPartner?.displayName ?? null,
     iAmPayer: sch.expense.paidByPartner?.id === partner.id,
+    recoveryMode: sch.expense.recoveryMode,
+    recoveredRupees: paiseToRupees(sch.expense.revenueRecoveries.reduce((a, r) => a + r.amountPaise, BigInt(0))),
     totalEmiCount: sch.totalEmiCount,
     purchasePriceRupees: paiseToRupees(sch.purchasePricePaise),
     downPaymentRupees: paiseToRupees(sch.downPaymentPaise),

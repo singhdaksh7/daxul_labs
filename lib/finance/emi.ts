@@ -16,6 +16,8 @@ export interface CreateEmiExpenseParams {
   paidByPartnerId: string;
   notes?: string;
   createdBy: string;
+  /** PARTNER_SPLIT (default) or REVENUE (cost recovered from business revenue; no partner obligations). */
+  recoveryMode?: 'PARTNER_SPLIT' | 'REVENUE';
 }
 
 /**
@@ -47,7 +49,8 @@ export async function createEmiExpenseSchedule(
     }));
 
     // Down payment split
-    const downPaymentShares = splitPaiseDeterministically(downPaymentPaise, partnerSplits);
+    const revenueMode = params.recoveryMode === 'REVENUE';
+    const downPaymentShares = revenueMode ? [] : splitPaiseDeterministically(downPaymentPaise, partnerSplits);
 
     // Create Parent Expense
     const expense = await tx.businessExpense.create({
@@ -60,6 +63,7 @@ export async function createEmiExpenseSchedule(
         totalAmountPaise: purchasePricePaise,
         paidByPartnerId: params.paidByPartnerId,
         isEmi: true,
+        recoveryMode: revenueMode ? 'REVENUE' : 'PARTNER_SPLIT',
         splitMethod: 'EQUAL',
         status: 'ACTIVE',
         notes: params.notes,
@@ -147,7 +151,7 @@ export async function createEmiExpenseSchedule(
       });
 
       // Split each installment across partners
-      const instShares = splitPaiseDeterministically(instAmount, partnerSplits);
+      const instShares = revenueMode ? [] : splitPaiseDeterministically(instAmount, partnerSplits);
 
       for (const s of instShares) {
         await tx.partnerEmiObligation.create({

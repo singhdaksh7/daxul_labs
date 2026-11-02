@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import RecoveryPanel from "../RecoveryPanel";
 import { Clock, Plus, Calendar, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function EmiAdminClient() {
@@ -19,6 +20,7 @@ export default function EmiAdminClient() {
   const [downPaymentRupees, setDownPaymentRupees] = useState("");
   const [totalTenureMonths, setTotalTenureMonths] = useState("6");
   const [monthlyInstallmentRupees, setMonthlyInstallmentRupees] = useState("");
+  const [recoveryMode, setRecoveryMode] = useState("PARTNER_SPLIT");
   const [firstEmiDate, setFirstEmiDate] = useState(() => { const d = new Date(); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 10); });
 
   const fetchData = async () => {
@@ -83,6 +85,7 @@ export default function EmiAdminClient() {
           downPaymentRupees: parseFloat(downPaymentRupees) || 0,
           totalEmiCount: parseInt(totalTenureMonths, 10),
           frequency: "MONTHLY",
+          recoveryMode,
           firstEmiDate: firstEmiDate ? new Date(firstEmiDate).toISOString() : new Date().toISOString(),
         }),
       });
@@ -245,6 +248,19 @@ export default function EmiAdminClient() {
             </div>
 
             <div>
+              <label className="block text-[11px] font-medium text-[#B9B9B4]">Who bears this cost?</label>
+              <select
+                id="emi-recovery-select"
+                value={recoveryMode}
+                onChange={(e) => setRecoveryMode(e.target.value)}
+                className="mt-1.5 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
+              >
+                <option value="PARTNER_SPLIT">Split between all partners</option>
+                <option value="REVENUE">Recover from business revenue (payer is repaid from sales)</option>
+              </select>
+            </div>
+
+            <div>
               <label className="block text-[11px] font-medium text-[#B9B9B4]">Financed / Paid By</label>
               <select
                 id="emi-partner-select"
@@ -356,6 +372,19 @@ function ScheduleCard({ sch, onChanged, onError }: { sch: any; onChanged: () => 
         </button>
       </div>
 
+      {sch.expense?.recoveryMode === "REVENUE" && (
+        <div className="mt-5">
+          <RecoveryPanel
+            expenseId={sch.expenseId}
+            paidOutPaise={Number(sch.downPaymentPaise) + installments.filter((i) => i.status === "PAID").reduce((a, i) => a + Number(i.amountPaise), 0)}
+            recoveries={sch.expense?.revenueRecoveries || []}
+            payerName={payerName}
+            onChanged={onChanged}
+            onError={onError}
+          />
+        </div>
+      )}
+
       {open && (
         <div className="mt-5 space-y-4">
           {installments.map((inst) => {
@@ -386,6 +415,7 @@ function ScheduleCard({ sch, onChanged, onError }: { sch: any; onChanged: () => 
                   </div>
                 )}
 
+                {sch.expense?.recoveryMode !== "REVENUE" && (
                 <div className="space-y-2.5 border-t border-[#242426] pt-4">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Partner shares</p>
                   {obligations.map((o) => {
@@ -412,6 +442,7 @@ function ScheduleCard({ sch, onChanged, onError }: { sch: any; onChanged: () => 
                     );
                   })}
                 </div>
+                )}
               </div>
             );
           })}

@@ -20,6 +20,8 @@ export interface CreateExpenseParams {
   createdBy: string;
   // Optional custom splits
   customSplits?: Array<{ partnerId: string; percentage: number }>;
+  /** PARTNER_SPLIT (default): partners repay the payer. REVENUE: business revenue repays the payer; no partner shares. */
+  recoveryMode?: 'PARTNER_SPLIT' | 'REVENUE';
 }
 
 /**
@@ -48,7 +50,11 @@ export async function createBusinessExpense(
       ? params.customSplits.map((cs) => ({ id: cs.partnerId, splitPercentage: cs.percentage }))
       : activePartners.map((p) => ({ id: p.id, splitPercentage: p.expenseSplitPercentage }));
 
-    const shares = splitPaiseDeterministically(totalAmountPaise, splitConfig);
+    const revenueMode = params.recoveryMode === 'REVENUE';
+    if (revenueMode && (!params.paidByPartnerId || params.isBusinessAccountPaid)) {
+      throw new Error('Choose the partner who paid. Recovering from revenue needs a paying partner.');
+    }
+    const shares = revenueMode ? [] : splitPaiseDeterministically(totalAmountPaise, splitConfig);
 
     const expense = await tx.businessExpense.create({
       data: {
@@ -65,6 +71,7 @@ export async function createBusinessExpense(
         paymentMethod: params.paymentMethod || 'UPI',
         paidByPartnerId: params.paidByPartnerId,
         isBusinessAccountPaid: params.isBusinessAccountPaid || false,
+        recoveryMode: revenueMode ? 'REVENUE' : 'PARTNER_SPLIT',
         splitMethod: params.customSplits ? 'CUSTOM_PERCENTAGE' : 'EQUAL',
         status: 'ACTIVE',
         notes: params.notes,
@@ -159,6 +166,11 @@ export async function cancelBusinessExpense(params: { expenseId: string; reason:
     }
     if (expense.shares.some((s) => s.paidAmountPaise > BigInt(0))) {
       throw new ExpenseCancelError('A partner has already paid towards this expense, so it cannot be cancelled.');
+    }
+
+    const recoveries = await tx.expenseRevenueRecovery.count({ where: { expenseId: expense.id } });
+    if (recoveries > 0) {
+      throw new ExpenseCancelError('Revenue has already been recovered against this expense, so it cannot be cancelled.');
     }
 
     const entries = await tx.partnerLedgerEntry.findMany({

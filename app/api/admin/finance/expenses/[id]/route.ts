@@ -16,6 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { id },
     include: {
       paidByPartner: { select: { id: true, displayName: true, email: true } },
+      revenueRecoveries: { orderBy: { recoveredAt: 'desc' } },
       shares: {
         include: {
           partner: { select: { id: true, displayName: true, email: true } },

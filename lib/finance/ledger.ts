@@ -16,6 +16,7 @@ export interface CreateLedgerEntryParams {
     | 'ADVANCE_REPAYMENT'
     | 'REFUND_ADJUSTMENT'
     | 'MANUAL_ADJUSTMENT'
+    | 'REVENUE_RECOVERY'
     | 'REVERSAL';
   amountPaise: bigint;
   direction: 'DEBIT' | 'CREDIT';
@@ -99,6 +100,10 @@ export async function recordPartnerLedgerEntry(
       break;
     case 'PROFIT_WITHDRAWAL':
       updateData.profitWithdrawnPaise = { increment: params.amountPaise };
+      break;
+    case 'REVENUE_RECOVERY':
+      // Business repaid the paying partner out of revenue: their receivable shrinks.
+      updateData.amountReceivablePaise = { decrement: params.amountPaise };
       break;
     case 'REIMBURSEMENT':
       updateData.reimbursementDuePaise = { increment: params.amountPaise };

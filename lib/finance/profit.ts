@@ -50,6 +50,17 @@ export async function calculatePeriodProfit(periodId: string) {
     },
   });
 
+  // Money the business repaid to partners for REVENUE-recovery purchases (e.g. an EMI printer) leaves the
+  // distributable pool, otherwise the same cash would be both repaid and shared out as profit.
+  const recoveryAgg = await prisma.expenseRevenueRecovery.aggregate({
+    where: {
+      recoveredAt: { gte: period.startDate, lte: period.endDate },
+      expense: { status: { not: 'CANCELLED' } },
+    },
+    _sum: { amountPaise: true },
+  });
+  const revenueRecoveryPaise = recoveryAgg._sum.amountPaise ?? BigInt(0);
+
   const totalOpexPaise = opexExpenses.reduce((acc, e) => acc + e.totalAmountPaise, BigInt(0));
 
   const totalRevenuePaise = rupeesToPaise(totalRevenueRupees);
@@ -57,7 +68,7 @@ export async function calculatePeriodProfit(periodId: string) {
   const totalCogsPaise = rupeesToPaise(totalCogsRupees);
 
   const grossProfitPaise = totalRevenuePaise - totalRefundsPaise - totalCogsPaise;
-  const netDistributablePaise = grossProfitPaise - totalOpexPaise;
+  const netDistributablePaise = grossProfitPaise - totalOpexPaise - revenueRecoveryPaise;
 
   return await prisma.profitPeriod.update({
     where: { id: period.id },
@@ -66,6 +77,7 @@ export async function calculatePeriodProfit(periodId: string) {
       totalRefundsPaise,
       totalCogsPaise,
       operatingExpensePaise: totalOpexPaise,
+      revenueRecoveryPaise,
       grossProfitPaise,
       netDistributablePaise: netDistributablePaise > BigInt(0) ? netDistributablePaise : BigInt(0),
     },

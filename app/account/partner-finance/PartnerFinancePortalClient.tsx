@@ -230,6 +230,13 @@ export default function PartnerFinancePortalClient() {
                       <span className="text-sm font-bold text-[#F3F0E9]">{inr(sch.purchasePriceRupees)}</span>
                     </div>
 
+                    {sch.recoveryMode === "REVENUE" && (
+                      <p className="rounded-lg border border-[#C8FF35]/20 bg-[#151515] px-3.5 py-3 text-xs text-[#B9B9B4]">
+                        <span className="font-semibold text-[#C8FF35]">Recovered from business revenue.</span> Partners do not pay shares for this one.
+                        Recovered so far: {inr(sch.recoveredRupees || 0)}.
+                      </p>
+                    )}
+
                     {upcoming.length > 0 && (
                       <div className="space-y-2">
                         <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Upcoming</p>

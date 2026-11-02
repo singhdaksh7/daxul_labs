@@ -14,7 +14,10 @@ export async function GET(req: NextRequest) {
     where: { expense: { status: { not: 'CANCELLED' } } },
     include: {
       expense: {
-        include: { paidByPartner: { select: { id: true, displayName: true } } },
+        include: {
+          paidByPartner: { select: { id: true, displayName: true } },
+          revenueRecoveries: { orderBy: { recoveredAt: 'desc' } },
+        },
       },
       installments: {
         include: {
@@ -48,6 +51,7 @@ const emiSchema = z.object({
   firstEmiDate: z.string(),
   paidByPartnerId: z.string().min(1),
   notes: z.string().optional().nullable(),
+  recoveryMode: z.enum(['PARTNER_SPLIT', 'REVENUE']).optional(),
 });
 
 export async function POST(req: NextRequest) {

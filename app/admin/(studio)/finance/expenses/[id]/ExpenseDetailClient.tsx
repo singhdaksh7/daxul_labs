@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { FileText, Clock, Upload, ArrowLeft, ShieldCheck, CheckCircle2, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import RecoveryPanel from "../../RecoveryPanel";
 
 export default function ExpenseDetailClient() {
   const params = useParams();
@@ -122,6 +123,23 @@ export default function ExpenseDetailClient() {
           </button>
         )}
       </div>
+
+      {expense.recoveryMode === "REVENUE" && expense.status !== "CANCELLED" && (
+        expense.isEmi ? (
+          <p className="rounded-lg border border-[#C8FF35]/20 bg-[#151515] px-4 py-3 text-xs text-[#B9B9B4]">
+            This is an EMI that is recovered from business revenue. Record installments and recoveries on the <Link href="/admin/finance/emi" className="text-[#C8FF35] underline">EMIs page</Link>.
+          </p>
+        ) : (
+          <RecoveryPanel
+            expenseId={id}
+            paidOutPaise={Number(expense.totalAmountPaise)}
+            recoveries={expense.revenueRecoveries || []}
+            payerName={expense.paidByPartner?.displayName}
+            onChanged={fetchDetail}
+            onError={setError}
+          />
+        )
+      )}
 
       {error && (
         <div id="detail-error" className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-xs text-red-400">

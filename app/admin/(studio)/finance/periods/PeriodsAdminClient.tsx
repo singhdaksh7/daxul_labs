@@ -133,18 +133,22 @@ export default function PeriodsAdminClient() {
                     </span>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-3 gap-2 border-t border-[#242426] pt-3 text-[11px]">
+                  <div className="mt-3 grid grid-cols-2 gap-3 border-t border-[#242426] pt-3 text-[11px] sm:grid-cols-4">
                     <div>
                       <span className="text-gray-500">Revenue:</span>
-                      <p className="font-medium text-[#F3F0E9]">₹{(Number(p.grossRevenuePaise) / 100).toLocaleString('en-IN')}</p>
+                      <p className="font-medium text-[#F3F0E9]">₹{(Number(p.totalRevenuePaise) / 100).toLocaleString('en-IN')}</p>
                     </div>
                     <div>
                       <span className="text-gray-500">Expenses:</span>
-                      <p className="font-medium text-[#F3F0E9]">₹{(Number(p.totalExpensesPaise) / 100).toLocaleString('en-IN')}</p>
+                      <p className="font-medium text-[#F3F0E9]">₹{((Number(p.totalCogsPaise) + Number(p.operatingExpensePaise)) / 100).toLocaleString('en-IN')}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Recovered to partners:</span>
+                      <p className="font-medium text-yellow-300">₹{(Number(p.revenueRecoveryPaise || 0) / 100).toLocaleString('en-IN')}</p>
                     </div>
                     <div>
                       <span className="text-gray-500">Net Distributable:</span>
-                      <p className="font-medium text-[#C8FF35]">₹{(Number(p.distributableProfitPaise) / 100).toLocaleString('en-IN')}</p>
+                      <p className="font-medium text-[#C8FF35]">₹{(Number(p.netDistributablePaise) / 100).toLocaleString('en-IN')}</p>
                     </div>
                   </div>
 

@@ -1865,6 +1865,7 @@ model BusinessExpense {
   paidByPartner        BusinessPartner?         @relation("ExpensePayer", fields: [paidByPartnerId], references: [id], onDelete: SetNull)
   isBusinessAccountPaid Boolean                 @default(false)
   isEmi                Boolean                  @default(false)
+  recoveryMode         String                   @default("PARTNER_SPLIT") // PARTNER_SPLIT (partners repay the payer) | REVENUE (business revenue repays the payer)
   splitMethod          String                   @default("EQUAL") // EQUAL, OWNERSHIP_PERCENTAGE, CUSTOM_PERCENTAGE, CUSTOM_AMOUNT
   status               String                   @default("ACTIVE") // DRAFT, ACTIVE, FULLY_SETTLED, PARTIALLY_SETTLED, CANCELLED
   notes                String?                  @db.Text
@@ -1875,6 +1876,7 @@ model BusinessExpense {
   emiSchedule          ExpenseEmiSchedule?
   attachments          ExpenseAttachment[]
   ledgerEntries        PartnerLedgerEntry[]
+  revenueRecoveries    ExpenseRevenueRecovery[]
 
   @@index([category, status])
   @@index([expenseDate])
@@ -2059,6 +2061,7 @@ model ProfitPeriod {
   totalRevenuePaise     BigInt                    @default(0)
   totalRefundsPaise     BigInt                    @default(0)
   totalCogsPaise        BigInt                    @default(0)
+  revenueRecoveryPaise  BigInt   @default(0)
   operatingExpensePaise BigInt                    @default(0)
   grossProfitPaise      BigInt                    @default(0)
   netDistributablePaise BigInt                    @default(0)
@@ -2196,4 +2199,21 @@ model IntegrationSetting {
   isSecret       Boolean  @default(false)
   updatedBy      String?
   updatedAt      DateTime @updatedAt
+}
+
+
+/// Money the business has repaid the paying partner out of revenue for a REVENUE-recovery expense/EMI.
+model ExpenseRevenueRecovery {
+  id           String          @id @default(cuid())
+  expenseId    String
+  expense      BusinessExpense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  partnerId    String
+  amountPaise  BigInt
+  recoveredAt  DateTime        @default(now())
+  note         String?
+  createdBy    String
+  createdAt    DateTime        @default(now())
+
+  @@index([expenseId])
+  @@index([recoveredAt])
 }
