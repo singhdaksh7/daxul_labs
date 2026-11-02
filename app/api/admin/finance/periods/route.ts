@@ -109,7 +109,10 @@ export async function PUT(req: NextRequest) {
       periodId: parsed.data.periodId,
       lockedBy: adminId,
     });
-    return NextResponse.json({ ...result });
+    const safeResult = JSON.parse(
+      JSON.stringify(result, (k, v) => (typeof v === 'bigint' ? v.toString() : v))
+    );
+    return NextResponse.json(safeResult);
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to lock period' }, { status: 400 });
   }

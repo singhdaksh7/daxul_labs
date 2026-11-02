@@ -30,23 +30,9 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: 'desc' },
   });
 
-  const safeSchedules = schedules.map((s) => ({
-    ...s,
-    purchasePricePaise: s.purchasePricePaise.toString(),
-    downPaymentPaise: s.downPaymentPaise.toString(),
-    financedAmountPaise: s.financedAmountPaise.toString(),
-    installments: s.installments.map((inst) => ({
-      ...inst,
-      amountPaise: inst.amountPaise.toString(),
-      amountPaidPaise: inst.amountPaidPaise.toString(),
-      partnerObligations: inst.partnerObligations.map((o) => ({
-        ...o,
-        shareAmountPaise: o.shareAmountPaise.toString(),
-        amountPaidPaise: o.amountPaidPaise.toString(),
-        remainingPaise: o.remainingPaise.toString(),
-      })),
-    })),
-  }));
+  const safeSchedules = JSON.parse(
+    JSON.stringify(schedules, (k, v) => (typeof v === 'bigint' ? v.toString() : v))
+  );
 
   return NextResponse.json({ schedules: safeSchedules });
 }
@@ -85,7 +71,10 @@ export async function POST(req: NextRequest) {
       createdBy: adminId,
     });
 
-    return NextResponse.json({ success: true, ...result });
+    const safeResult = JSON.parse(
+      JSON.stringify(result, (k, v) => (typeof v === 'bigint' ? v.toString() : v))
+    );
+    return NextResponse.json({ success: true, ...safeResult });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to create EMI schedule' }, { status: 400 });
   }

@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
           amountReceivablePaise: p.financialAccount.amountReceivablePaise.toString(),
           profitAllocatedPaise: p.financialAccount.profitAllocatedPaise.toString(),
           profitWithdrawnPaise: p.financialAccount.profitWithdrawnPaise.toString(),
-          netSettlementPositionPaise: p.financialAccount.netSettlementPositionPaise.toString(),
+          netSettlementPositionPaise: p.financialAccount.netSettlementPositionPaise.toString(), reimbursementDuePaise: p.financialAccount.reimbursementDuePaise.toString(),
         }
       : null,
   }));
@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, partner });
+    const safeP = JSON.parse(JSON.stringify(partner, (k, v) => typeof v === 'bigint' ? v.toString() : v)); return NextResponse.json({ success: true, partner: safeP });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to configure partner' }, { status: 400 });
   }

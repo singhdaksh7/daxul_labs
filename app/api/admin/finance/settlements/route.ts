@@ -64,13 +64,10 @@ export async function POST(req: NextRequest) {
       createdBy: adminId,
     });
 
-    return NextResponse.json({
-      success: true,
-      settlement: {
-        ...settlement,
-        amountPaise: settlement.amountPaise.toString(),
-      },
-    });
+    const safeSettlement = JSON.parse(
+      JSON.stringify(settlement, (k, v) => (typeof v === 'bigint' ? v.toString() : v))
+    );
+    return NextResponse.json({ success: true, settlement: safeSettlement });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to submit settlement' }, { status: 400 });
   }

@@ -89,18 +89,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   // Sort timeline chronologically
   timeline.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
+  const safeExpense = JSON.parse(
+    JSON.stringify(expense, (k, v) => (typeof v === 'bigint' ? v.toString() : v))
+  );
+
   return NextResponse.json({
-    expense: {
-      ...expense,
-      totalAmountPaise: expense.totalAmountPaise.toString(),
-      taxAmountPaise: expense.taxAmountPaise.toString(),
-      shares: expense.shares.map((s) => ({
-        ...s,
-        shareAmountPaise: s.shareAmountPaise.toString(),
-        paidAmountPaise: s.paidAmountPaise.toString(),
-        remainingPaise: s.remainingPaise.toString(),
-      })),
-    },
+    expense: safeExpense,
     timeline,
   });
 }
@@ -151,3 +145,43 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   return NextResponse.json({ success: true, expense: updated });
 }
 
+
+const uploadProofSchema = z.object({
+  action: z.literal('UPLOAD_PROOF'),
+  fileUrl: z.string().min(1),
+  fileName: z.string().min(1),
+  fileSize: z.number().int().positive().optional(),
+  mimeType: z.string().default('application/pdf'),
+  description: z.string().optional(),
+});
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const check = await requireAdminSession();
+  if (!check.authorized) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const { id } = await params;
+  const json = await req.json().catch(() => ({}));
+  const parsed = uploadProofSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  }
+
+  const adminEmail = check.session?.user?.email || 'admin@daxullabs.com';
+
+  const attachment = await prisma.expenseAttachment.create({
+    data: {
+      expenseId: id,
+      type: 'INVOICE',
+      fileUrl: parsed.data.fileUrl,
+      fileName: parsed.data.fileName,
+      fileSize: parsed.data.fileSize || 10240,
+      mimeType: parsed.data.mimeType,
+      notes: parsed.data.description,
+      uploadedBy: adminEmail,
+    },
+  });
+
+  return NextResponse.json({ success: true, attachment });
+}

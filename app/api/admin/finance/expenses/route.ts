@@ -113,14 +113,8 @@ export async function POST(req: NextRequest) {
       createdBy: adminId,
     });
 
-    return NextResponse.json({
-      success: true,
-      expense: {
-        ...expense,
-        totalAmountPaise: expense.totalAmountPaise.toString(),
-        taxAmountPaise: expense.taxAmountPaise.toString(),
-      },
-    });
+    const safeExpense = JSON.parse(JSON.stringify(expense, (k, v) => typeof v === 'bigint' ? v.toString() : v));
+    return NextResponse.json({ success: true, expense: safeExpense });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Failed to create expense' }, { status: 400 });
   }
