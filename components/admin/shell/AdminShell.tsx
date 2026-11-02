@@ -38,6 +38,12 @@ import {
   HelpCircle,
   ArrowDownRight,
   TrendingUp,
+  Award,
+  Gift,
+  Coins,
+  Share2,
+  Users2,
+  Zap,
 } from "lucide-react";
 
 type NavItem = { label: string; href: string; icon: React.ComponentType<{ className?: string }>; view?: string };
@@ -81,12 +87,25 @@ const NAV: { section: string; items: NavItem[] }[] = [
     ],
   },
   {
+    section: "Retention & Lifecycle",
+    items: [
+      { label: "Loyalty & Rewards", href: "/admin/loyalty", icon: Award },
+      { label: "Referral Desk", href: "/admin/referrals", icon: Share2 },
+      { label: "Gift Cards", href: "/admin/gift-cards", icon: Gift },
+      { label: "Store Credit", href: "/admin/store-credit", icon: Coins },
+      { label: "Customer Segments", href: "/admin/customer-segments", icon: Users2 },
+      { label: "Automations", href: "/admin/automations", icon: Zap },
+    ],
+  },
+  {
     section: "System",
     items: [
       { label: "Analytics Overview", href: "/admin/analytics", icon: BarChart3 },
+      { label: "Retention Analytics", href: "/admin/analytics/retention", icon: TrendingUp },
       { label: "Conversion Funnel", href: "/admin/analytics/funnel", icon: ArrowDownRight },
       { label: "Product Conversion", href: "/admin/analytics/products", icon: TrendingUp },
       { label: "Store Settings", href: "/admin/settings", icon: Settings },
+      { label: "Retention Settings", href: "/admin/settings/retention", icon: Settings },
       { label: "Theme", href: "/admin/theme", icon: Palette },
       { label: "Audit Logs", href: "/admin/audit", icon: ClipboardList },
     ],

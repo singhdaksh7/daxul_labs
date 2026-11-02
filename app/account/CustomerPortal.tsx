@@ -22,6 +22,12 @@ import {
   ExternalLink,
   LogOut,
   ShoppingBag,
+  Award,
+  Share2,
+  Coins,
+  Gift,
+  Settings,
+  Copy,
 } from "lucide-react";
 
 interface OrderItem {
@@ -88,10 +94,27 @@ interface WishlistProduct {
 }
 
 export default function CustomerPortal({ user }: { user: { id?: string; name?: string | null; email?: string | null } }) {
-  const [activeTab, setActiveTab] = useState<"orders" | "custom" | "addresses" | "wishlist" | "profile">("orders");
+  const [activeTab, setActiveTab] = useState<
+    "orders" | "custom" | "addresses" | "wishlist" | "profile" | "rewards" | "referrals" | "storeCredit" | "giftCards" | "preferences"
+  >("orders");
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [addresses, setAddresses] = useState<SavedAddress[]>([]);
   const [wishlist, setWishlist] = useState<WishlistProduct[]>([]);
+  const [rewardsData, setRewardsData] = useState<any>(null);
+  const [referralsData, setReferralsData] = useState<any>(null);
+  const [storeCreditData, setStoreCreditData] = useState<any>(null);
+  const [preferencesData, setPreferencesData] = useState<any>({
+    emailTransactional: true,
+    emailMarketing: true,
+    whatsappTransactional: true,
+    whatsappMarketing: false,
+  });
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [giftCardBalanceCheckCode, setGiftCardBalanceCheckCode] = useState("");
+  const [giftCardCheckResult, setGiftCardCheckResult] = useState<any>(null);
+  const [checkingGiftCard, setCheckingGiftCard] = useState(false);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [prefsSuccess, setPrefsSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Modals & form state
@@ -117,10 +140,14 @@ export default function CustomerPortal({ user }: { user: { id?: string; name?: s
   const loadData = async () => {
     setLoading(true);
     try {
-      const [ordersRes, profileRes, wishlistRes] = await Promise.all([
+      const [ordersRes, profileRes, wishlistRes, rewardsRes, referralsRes, storeCreditRes, prefsRes] = await Promise.all([
         fetch("/api/account/orders"),
         fetch("/api/account/profile"),
         fetch("/api/account/wishlist"),
+        fetch("/api/account/rewards"),
+        fetch("/api/account/referrals"),
+        fetch("/api/account/store-credit"),
+        fetch("/api/account/preferences"),
       ]);
 
       if (ordersRes.ok) {
@@ -134,6 +161,22 @@ export default function CustomerPortal({ user }: { user: { id?: string; name?: s
       if (wishlistRes.ok) {
         const d = await wishlistRes.json();
         setWishlist(d.wishlist || []);
+      }
+      if (rewardsRes.ok) {
+        const d = await rewardsRes.json();
+        setRewardsData(d);
+      }
+      if (referralsRes.ok) {
+        const d = await referralsRes.json();
+        setReferralsData(d);
+      }
+      if (storeCreditRes.ok) {
+        const d = await storeCreditRes.json();
+        setStoreCreditData(d);
+      }
+      if (prefsRes.ok) {
+        const d = await prefsRes.json();
+        if (d.preferences) setPreferencesData(d.preferences);
       }
     } catch (e) {
       console.error("Error loading account data:", e);
@@ -360,6 +403,66 @@ export default function CustomerPortal({ user }: { user: { id?: string; name?: s
           >
             <Heart className="w-3.5 h-3.5" />
             <span>Wishlist ({wishlist.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("rewards")}
+            className={`py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === "rewards"
+                ? "border-daxul-black text-daxul-black"
+                : "border-transparent text-[#71717A] hover:text-daxul-black"
+            }`}
+          >
+            <Award className="w-3.5 h-3.5" />
+            <span>Rewards ({rewardsData?.account?.availablePoints ?? 0} pts)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("referrals")}
+            className={`py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === "referrals"
+                ? "border-daxul-black text-daxul-black"
+                : "border-transparent text-[#71717A] hover:text-daxul-black"
+            }`}
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>Referrals</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("storeCredit")}
+            className={`py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === "storeCredit"
+                ? "border-daxul-black text-daxul-black"
+                : "border-transparent text-[#71717A] hover:text-daxul-black"
+            }`}
+          >
+            <Coins className="w-3.5 h-3.5" />
+            <span>Store Credit (₹{storeCreditData?.account?.availableBalance ?? 0})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("giftCards")}
+            className={`py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === "giftCards"
+                ? "border-daxul-black text-daxul-black"
+                : "border-transparent text-[#71717A] hover:text-daxul-black"
+            }`}
+          >
+            <Gift className="w-3.5 h-3.5" />
+            <span>Gift Cards</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("preferences")}
+            className={`py-4 text-xs font-bold uppercase tracking-wider whitespace-nowrap border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === "preferences"
+                ? "border-daxul-black text-daxul-black"
+                : "border-transparent text-[#71717A] hover:text-daxul-black"
+            }`}
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>Preferences</span>
           </button>
         </div>
       </section>
@@ -711,6 +814,304 @@ export default function CustomerPortal({ user }: { user: { id?: string; name?: s
               </div>
             )}
 
+            {/* REWARDS TAB */}
+            {activeTab === "rewards" && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Available Points</span>
+                    <p className="text-2xl font-bold font-mono text-daxul-black mt-2">
+                      {rewardsData?.account?.availablePoints ?? 0}
+                    </p>
+                    <span className="text-[11px] text-[#555550]">Redeemable at checkout</span>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Pending Points</span>
+                    <p className="text-2xl font-bold font-mono text-yellow-600 mt-2">
+                      {rewardsData?.account?.pendingPoints ?? 0}
+                    </p>
+                    <span className="text-[11px] text-[#555550]">Unlocks after delivery</span>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Lifetime Earned</span>
+                    <p className="text-2xl font-bold font-mono text-daxul-black mt-2">
+                      {rewardsData?.account?.lifetimeEarned ?? 0}
+                    </p>
+                    <span className="text-[11px] text-[#555550]">Gross points accumulated</span>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Lifetime Redeemed</span>
+                    <p className="text-2xl font-bold font-mono text-daxul-black mt-2">
+                      {rewardsData?.account?.lifetimeRedeemed ?? 0}
+                    </p>
+                    <span className="text-[11px] text-[#555550]">Applied toward orders</span>
+                  </div>
+                </div>
+
+                <div className="bg-[#151515] border border-white/10 rounded-xl p-6 text-white space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Award className="w-4 h-4 text-[#C8FF35]" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#F3F0E9]">DAXUL Member Rewards Policy</h3>
+                  </div>
+                  <p className="text-xs text-[#B9B9B4] leading-relaxed">
+                    Earn 1 point for every ₹100 spent on eligible design objects. 1 Point = ₹1 at checkout. Redeem points directly on any order up to 20% of your cart subtotal. Points unlock 7 days post-delivery.
+                  </p>
+                </div>
+
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-daxul-black mb-4">Points Activity Ledger</h3>
+                  {!rewardsData?.transactions?.length ? (
+                    <p className="text-xs text-[#71717A] py-4 text-center">No rewards transactions yet.</p>
+                  ) : (
+                    <div className="divide-y divide-daxul-black/5 text-xs">
+                      {rewardsData.transactions.map((tx: any) => (
+                        <div key={tx.id} className="py-3 flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-daxul-black block">{tx.reason}</span>
+                            <span className="text-[10px] text-[#71717A]">
+                              {new Date(tx.createdAt).toLocaleDateString()} • {tx.status}
+                            </span>
+                          </div>
+                          <span className={`font-mono font-bold ${tx.type === "REDEEM" ? "text-red-600" : "text-green-600"}`}>
+                            {tx.type === "REDEEM" ? `-${tx.points}` : `+${tx.points}`} pts
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* REFERRALS TAB */}
+            {activeTab === "referrals" && (
+              <div className="space-y-6">
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-8 shadow-sm space-y-4">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#71717A]">Peer Referral Program</span>
+                  <h3 className="text-xl font-bold uppercase text-daxul-black">Share DAXUL with someone.</h3>
+                  <p className="text-xs text-[#555550] max-w-xl leading-relaxed">
+                    Give your friends ₹100 off their first bespoke 3D printed object, and receive 200 reward points once their qualifying order is delivered.
+                  </p>
+
+                  <div className="pt-2 flex flex-col sm:flex-row gap-3 max-w-lg">
+                    <div className="flex-1 bg-[#F3F0E9] border border-daxul-black/15 rounded-lg px-4 py-2.5 font-mono text-xs flex items-center justify-between">
+                      <span className="text-daxul-black truncate">{referralsData?.referralLink || "https://daxullabs.com/shop?ref=..."}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (referralsData?.referralLink) {
+                          navigator.clipboard.writeText(referralsData.referralLink);
+                          setCopiedLink(true);
+                          setTimeout(() => setCopiedLink(false), 2000);
+                        }
+                      }}
+                      className="bg-daxul-lime text-daxul-black border border-daxul-black font-bold text-xs uppercase px-5 py-2.5 rounded-lg flex items-center justify-center gap-1.5"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>{copiedLink ? "Copied!" : "Copy Link"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Friends Invited</span>
+                    <p className="text-2xl font-bold font-mono text-daxul-black mt-2">{referralsData?.stats?.totalInvited ?? 0}</p>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Successful Purchases</span>
+                    <p className="text-2xl font-bold font-mono text-green-600 mt-2">{referralsData?.stats?.successfulCount ?? 0}</p>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Pending Orders</span>
+                    <p className="text-2xl font-bold font-mono text-yellow-600 mt-2">{referralsData?.stats?.pendingCount ?? 0}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STORE CREDIT TAB */}
+            {activeTab === "storeCredit" && (
+              <div className="space-y-6">
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Available Store Credit</span>
+                    <p className="text-3xl font-bold font-mono text-daxul-black mt-1">
+                      ₹{storeCreditData?.account?.availableBalance ?? 0}
+                    </p>
+                    <span className="text-xs text-[#555550]">Can be applied directly at checkout toward any object or custom design.</span>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-daxul-black mb-4">Store Credit History</h3>
+                  {!storeCreditData?.transactions?.length ? (
+                    <p className="text-xs text-[#71717A] py-4 text-center">No store credit transactions yet.</p>
+                  ) : (
+                    <div className="divide-y divide-daxul-black/5 text-xs">
+                      {storeCreditData.transactions.map((tx: any) => (
+                        <div key={tx.id} className="py-3 flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-daxul-black block">{tx.reason}</span>
+                            <span className="text-[10px] text-[#71717A]">{new Date(tx.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <span className={`font-mono font-bold ${tx.type === "DEBIT" ? "text-red-600" : "text-green-600"}`}>
+                            {tx.type === "DEBIT" ? `-₹${tx.amount}` : `+₹${tx.amount}`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* GIFT CARDS TAB */}
+            {activeTab === "giftCards" && (
+              <div className="space-y-6">
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-daxul-black">Check Gift Card Balance</h3>
+                  <p className="text-xs text-[#555550]">Enter your 16-character digital gift card code to check remaining balance.</p>
+                  <div className="flex gap-2 max-w-md">
+                    <input
+                      type="text"
+                      placeholder="DXL-XXXX-XXXX-XXXX"
+                      value={giftCardBalanceCheckCode}
+                      onChange={(e) => setGiftCardBalanceCheckCode(e.target.value)}
+                      className="flex-1 bg-[#F3F0E9] border border-daxul-black/15 rounded-lg px-3 py-2 text-xs font-mono uppercase"
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!giftCardBalanceCheckCode.trim()) return;
+                        setCheckingGiftCard(true);
+                        setGiftCardCheckResult(null);
+                        try {
+                          const res = await fetch("/api/gift-cards/check", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ code: giftCardBalanceCheckCode }),
+                          });
+                          const json = await res.json();
+                          if (res.ok) setGiftCardCheckResult(json);
+                          else alert(json.error || "Card not found");
+                        } catch (e) {
+                          alert("Failed to check gift card");
+                        } finally {
+                          setCheckingGiftCard(false);
+                        }
+                      }}
+                      className="bg-daxul-lime text-daxul-black border border-daxul-black font-bold text-xs uppercase px-4 py-2 rounded-lg"
+                    >
+                      {checkingGiftCard ? "Checking..." : "Verify"}
+                    </button>
+                  </div>
+                  {giftCardCheckResult && (
+                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-900">
+                      Balance: <strong>₹{giftCardCheckResult.remainingBalance}</strong> ({giftCardCheckResult.maskedCode})
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* PREFERENCES TAB */}
+            {activeTab === "preferences" && (
+              <div className="space-y-6">
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setSavingPrefs(true);
+                    setPrefsSuccess(false);
+                    try {
+                      const res = await fetch("/api/account/preferences", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(preferencesData),
+                      });
+                      if (res.ok) setPrefsSuccess(true);
+                    } finally {
+                      setSavingPrefs(false);
+                    }
+                  }}
+                  className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm space-y-6"
+                >
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-daxul-black">
+                    Notification & Marketing Preferences
+                  </h3>
+
+                  {prefsSuccess && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800">
+                      Preferences updated successfully.
+                    </div>
+                  )}
+
+                  <div className="space-y-4 text-xs">
+                    <label className="flex items-center justify-between p-3 bg-[#F3F0E9] rounded-lg cursor-pointer">
+                      <div>
+                        <span className="font-bold text-daxul-black block">Email: Order & Transactional</span>
+                        <span className="text-[11px] text-[#71717A]">Essential order confirmations, 3D printing proof approvals, and tracking.</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={preferencesData.emailTransactional}
+                        onChange={(e) => setPreferencesData({ ...preferencesData, emailTransactional: e.target.checked })}
+                        className="accent-daxul-black"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-3 bg-[#F3F0E9] rounded-lg cursor-pointer">
+                      <div>
+                        <span className="font-bold text-daxul-black block">Email: Studio Releases & Marketing</span>
+                        <span className="text-[11px] text-[#71717A]">Curated design object drops, limited editions, and private offers.</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={preferencesData.emailMarketing}
+                        onChange={(e) => setPreferencesData({ ...preferencesData, emailMarketing: e.target.checked })}
+                        className="accent-daxul-black"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-3 bg-[#F3F0E9] rounded-lg cursor-pointer">
+                      <div>
+                        <span className="font-bold text-daxul-black block">WhatsApp: Order Notifications</span>
+                        <span className="text-[11px] text-[#71717A]">Real-time courier tracking updates and instant design proof alerts.</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={preferencesData.whatsappTransactional}
+                        onChange={(e) => setPreferencesData({ ...preferencesData, whatsappTransactional: e.target.checked })}
+                        className="accent-daxul-black"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-3 bg-[#F3F0E9] rounded-lg cursor-pointer">
+                      <div>
+                        <span className="font-bold text-daxul-black block">WhatsApp: Studio Marketing</span>
+                        <span className="text-[11px] text-[#71717A]">Occasional design announcements on WhatsApp (opt-in only).</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={preferencesData.whatsappMarketing}
+                        onChange={(e) => setPreferencesData({ ...preferencesData, whatsappMarketing: e.target.checked })}
+                        className="accent-daxul-black"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={savingPrefs}
+                      className="bg-daxul-lime text-daxul-black border border-daxul-black font-bold text-xs uppercase px-5 py-2.5 rounded-lg"
+                    >
+                      {savingPrefs ? "Saving..." : "Save Preferences"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
             {/* WISHLIST TAB */}
             {activeTab === "wishlist" && (
               <div className="space-y-6">
@@ -759,6 +1160,602 @@ export default function CustomerPortal({ user }: { user: { id?: string; name?: s
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* REWARDS TAB */}
+            {activeTab === "rewards" && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Available Points</span>
+                    <p className="text-2xl font-bold font-mono text-daxul-black mt-2">
+                      {rewardsData?.account?.availablePoints ?? 0}
+                    </p>
+                    <span className="text-[11px] text-[#555550]">Redeemable at checkout</span>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Pending Points</span>
+                    <p className="text-2xl font-bold font-mono text-yellow-600 mt-2">
+                      {rewardsData?.account?.pendingPoints ?? 0}
+                    </p>
+                    <span className="text-[11px] text-[#555550]">Unlocks after delivery</span>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Lifetime Earned</span>
+                    <p className="text-2xl font-bold font-mono text-daxul-black mt-2">
+                      {rewardsData?.account?.lifetimeEarned ?? 0}
+                    </p>
+                    <span className="text-[11px] text-[#555550]">Gross points accumulated</span>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Lifetime Redeemed</span>
+                    <p className="text-2xl font-bold font-mono text-daxul-black mt-2">
+                      {rewardsData?.account?.lifetimeRedeemed ?? 0}
+                    </p>
+                    <span className="text-[11px] text-[#555550]">Applied toward orders</span>
+                  </div>
+                </div>
+
+                <div className="bg-[#151515] border border-white/10 rounded-xl p-6 text-white space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Award className="w-4 h-4 text-[#C8FF35]" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#F3F0E9]">DAXUL Member Rewards Policy</h3>
+                  </div>
+                  <p className="text-xs text-[#B9B9B4] leading-relaxed">
+                    Earn 1 point for every ₹100 spent on eligible design objects. 1 Point = ₹1 at checkout. Redeem points directly on any order up to 20% of your cart subtotal. Points unlock 7 days post-delivery.
+                  </p>
+                </div>
+
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-daxul-black mb-4">Points Activity Ledger</h3>
+                  {!rewardsData?.transactions?.length ? (
+                    <p className="text-xs text-[#71717A] py-4 text-center">No rewards transactions yet.</p>
+                  ) : (
+                    <div className="divide-y divide-daxul-black/5 text-xs">
+                      {rewardsData.transactions.map((tx: any) => (
+                        <div key={tx.id} className="py-3 flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-daxul-black block">{tx.reason}</span>
+                            <span className="text-[10px] text-[#71717A]">
+                              {new Date(tx.createdAt).toLocaleDateString()} • {tx.status}
+                            </span>
+                          </div>
+                          <span className={`font-mono font-bold ${tx.type === "REDEEM" ? "text-red-600" : "text-green-600"}`}>
+                            {tx.type === "REDEEM" ? `-${tx.points}` : `+${tx.points}`} pts
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* REFERRALS TAB */}
+            {activeTab === "referrals" && (
+              <div className="space-y-6">
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-8 shadow-sm space-y-4">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#71717A]">Peer Referral Program</span>
+                  <h3 className="text-xl font-bold uppercase text-daxul-black">Share DAXUL with someone.</h3>
+                  <p className="text-xs text-[#555550] max-w-xl leading-relaxed">
+                    Give your friends ₹100 off their first bespoke 3D printed object, and receive 200 reward points once their qualifying order is delivered.
+                  </p>
+
+                  <div className="pt-2 flex flex-col sm:flex-row gap-3 max-w-lg">
+                    <div className="flex-1 bg-[#F3F0E9] border border-daxul-black/15 rounded-lg px-4 py-2.5 font-mono text-xs flex items-center justify-between">
+                      <span className="text-daxul-black truncate">{referralsData?.referralLink || "https://daxullabs.com/shop?ref=..."}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (referralsData?.referralLink) {
+                          navigator.clipboard.writeText(referralsData.referralLink);
+                          setCopiedLink(true);
+                          setTimeout(() => setCopiedLink(false), 2000);
+                        }
+                      }}
+                      className="bg-daxul-lime text-daxul-black border border-daxul-black font-bold text-xs uppercase px-5 py-2.5 rounded-lg flex items-center justify-center gap-1.5"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>{copiedLink ? "Copied!" : "Copy Link"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Friends Invited</span>
+                    <p className="text-2xl font-bold font-mono text-daxul-black mt-2">{referralsData?.stats?.totalInvited ?? 0}</p>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Successful Purchases</span>
+                    <p className="text-2xl font-bold font-mono text-green-600 mt-2">{referralsData?.stats?.successfulCount ?? 0}</p>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Pending Orders</span>
+                    <p className="text-2xl font-bold font-mono text-yellow-600 mt-2">{referralsData?.stats?.pendingCount ?? 0}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STORE CREDIT TAB */}
+            {activeTab === "storeCredit" && (
+              <div className="space-y-6">
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Available Store Credit</span>
+                    <p className="text-3xl font-bold font-mono text-daxul-black mt-1">
+                      ₹{storeCreditData?.account?.availableBalance ?? 0}
+                    </p>
+                    <span className="text-xs text-[#555550]">Can be applied directly at checkout toward any object or custom design.</span>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-daxul-black mb-4">Store Credit History</h3>
+                  {!storeCreditData?.transactions?.length ? (
+                    <p className="text-xs text-[#71717A] py-4 text-center">No store credit transactions yet.</p>
+                  ) : (
+                    <div className="divide-y divide-daxul-black/5 text-xs">
+                      {storeCreditData.transactions.map((tx: any) => (
+                        <div key={tx.id} className="py-3 flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-daxul-black block">{tx.reason}</span>
+                            <span className="text-[10px] text-[#71717A]">{new Date(tx.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <span className={`font-mono font-bold ${tx.type === "DEBIT" ? "text-red-600" : "text-green-600"}`}>
+                            {tx.type === "DEBIT" ? `-₹${tx.amount}` : `+₹${tx.amount}`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* GIFT CARDS TAB */}
+            {activeTab === "giftCards" && (
+              <div className="space-y-6">
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-daxul-black">Check Gift Card Balance</h3>
+                  <p className="text-xs text-[#555550]">Enter your 16-character digital gift card code to check remaining balance.</p>
+                  <div className="flex gap-2 max-w-md">
+                    <input
+                      type="text"
+                      placeholder="DXL-XXXX-XXXX-XXXX"
+                      value={giftCardBalanceCheckCode}
+                      onChange={(e) => setGiftCardBalanceCheckCode(e.target.value)}
+                      className="flex-1 bg-[#F3F0E9] border border-daxul-black/15 rounded-lg px-3 py-2 text-xs font-mono uppercase"
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!giftCardBalanceCheckCode.trim()) return;
+                        setCheckingGiftCard(true);
+                        setGiftCardCheckResult(null);
+                        try {
+                          const res = await fetch("/api/gift-cards/check", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ code: giftCardBalanceCheckCode }),
+                          });
+                          const json = await res.json();
+                          if (res.ok) setGiftCardCheckResult(json);
+                          else alert(json.error || "Card not found");
+                        } catch (e) {
+                          alert("Failed to check gift card");
+                        } finally {
+                          setCheckingGiftCard(false);
+                        }
+                      }}
+                      className="bg-daxul-lime text-daxul-black border border-daxul-black font-bold text-xs uppercase px-4 py-2 rounded-lg"
+                    >
+                      {checkingGiftCard ? "Checking..." : "Verify"}
+                    </button>
+                  </div>
+                  {giftCardCheckResult && (
+                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-900">
+                      Balance: <strong>₹{giftCardCheckResult.remainingBalance}</strong> ({giftCardCheckResult.maskedCode})
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* PREFERENCES TAB */}
+            {activeTab === "preferences" && (
+              <div className="space-y-6">
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setSavingPrefs(true);
+                    setPrefsSuccess(false);
+                    try {
+                      const res = await fetch("/api/account/preferences", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(preferencesData),
+                      });
+                      if (res.ok) setPrefsSuccess(true);
+                    } finally {
+                      setSavingPrefs(false);
+                    }
+                  }}
+                  className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm space-y-6"
+                >
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-daxul-black">
+                    Notification & Marketing Preferences
+                  </h3>
+
+                  {prefsSuccess && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800">
+                      Preferences updated successfully.
+                    </div>
+                  )}
+
+                  <div className="space-y-4 text-xs">
+                    <label className="flex items-center justify-between p-3 bg-[#F3F0E9] rounded-lg cursor-pointer">
+                      <div>
+                        <span className="font-bold text-daxul-black block">Email: Order & Transactional</span>
+                        <span className="text-[11px] text-[#71717A]">Essential order confirmations, 3D printing proof approvals, and tracking.</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={preferencesData.emailTransactional}
+                        onChange={(e) => setPreferencesData({ ...preferencesData, emailTransactional: e.target.checked })}
+                        className="accent-daxul-black"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-3 bg-[#F3F0E9] rounded-lg cursor-pointer">
+                      <div>
+                        <span className="font-bold text-daxul-black block">Email: Studio Releases & Marketing</span>
+                        <span className="text-[11px] text-[#71717A]">Curated design object drops, limited editions, and private offers.</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={preferencesData.emailMarketing}
+                        onChange={(e) => setPreferencesData({ ...preferencesData, emailMarketing: e.target.checked })}
+                        className="accent-daxul-black"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-3 bg-[#F3F0E9] rounded-lg cursor-pointer">
+                      <div>
+                        <span className="font-bold text-daxul-black block">WhatsApp: Order Notifications</span>
+                        <span className="text-[11px] text-[#71717A]">Real-time courier tracking updates and instant design proof alerts.</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={preferencesData.whatsappTransactional}
+                        onChange={(e) => setPreferencesData({ ...preferencesData, whatsappTransactional: e.target.checked })}
+                        className="accent-daxul-black"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-3 bg-[#F3F0E9] rounded-lg cursor-pointer">
+                      <div>
+                        <span className="font-bold text-daxul-black block">WhatsApp: Studio Marketing</span>
+                        <span className="text-[11px] text-[#71717A]">Occasional design announcements on WhatsApp (opt-in only).</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={preferencesData.whatsappMarketing}
+                        onChange={(e) => setPreferencesData({ ...preferencesData, whatsappMarketing: e.target.checked })}
+                        className="accent-daxul-black"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={savingPrefs}
+                      className="bg-daxul-lime text-daxul-black border border-daxul-black font-bold text-xs uppercase px-5 py-2.5 rounded-lg"
+                    >
+                      {savingPrefs ? "Saving..." : "Save Preferences"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* REWARDS TAB */}
+            {activeTab === "rewards" && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Available Points</span>
+                    <p className="text-2xl font-bold font-mono text-daxul-black mt-2">
+                      {rewardsData?.account?.availablePoints ?? 0}
+                    </p>
+                    <span className="text-[11px] text-[#555550]">Redeemable at checkout</span>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Pending Points</span>
+                    <p className="text-2xl font-bold font-mono text-yellow-600 mt-2">
+                      {rewardsData?.account?.pendingPoints ?? 0}
+                    </p>
+                    <span className="text-[11px] text-[#555550]">Unlocks after delivery</span>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Lifetime Earned</span>
+                    <p className="text-2xl font-bold font-mono text-daxul-black mt-2">
+                      {rewardsData?.account?.lifetimeEarned ?? 0}
+                    </p>
+                    <span className="text-[11px] text-[#555550]">Gross points accumulated</span>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Lifetime Redeemed</span>
+                    <p className="text-2xl font-bold font-mono text-daxul-black mt-2">
+                      {rewardsData?.account?.lifetimeRedeemed ?? 0}
+                    </p>
+                    <span className="text-[11px] text-[#555550]">Applied toward orders</span>
+                  </div>
+                </div>
+
+                <div className="bg-[#151515] border border-white/10 rounded-xl p-6 text-white space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Award className="w-4 h-4 text-[#C8FF35]" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#F3F0E9]">DAXUL Member Rewards Policy</h3>
+                  </div>
+                  <p className="text-xs text-[#B9B9B4] leading-relaxed">
+                    Earn 1 point for every ₹100 spent on eligible design objects. 1 Point = ₹1 at checkout. Redeem points directly on any order up to 20% of your cart subtotal. Points unlock 7 days post-delivery.
+                  </p>
+                </div>
+
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-daxul-black mb-4">Points Activity Ledger</h3>
+                  {!rewardsData?.transactions?.length ? (
+                    <p className="text-xs text-[#71717A] py-4 text-center">No rewards transactions yet.</p>
+                  ) : (
+                    <div className="divide-y divide-daxul-black/5 text-xs">
+                      {rewardsData.transactions.map((tx: any) => (
+                        <div key={tx.id} className="py-3 flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-daxul-black block">{tx.reason}</span>
+                            <span className="text-[10px] text-[#71717A]">
+                              {new Date(tx.createdAt).toLocaleDateString()} • {tx.status}
+                            </span>
+                          </div>
+                          <span className={`font-mono font-bold ${tx.type === "REDEEM" ? "text-red-600" : "text-green-600"}`}>
+                            {tx.type === "REDEEM" ? `-${tx.points}` : `+${tx.points}`} pts
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* REFERRALS TAB */}
+            {activeTab === "referrals" && (
+              <div className="space-y-6">
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-8 shadow-sm space-y-4">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#71717A]">Peer Referral Program</span>
+                  <h3 className="text-xl font-bold uppercase text-daxul-black">Share DAXUL with someone.</h3>
+                  <p className="text-xs text-[#555550] max-w-xl leading-relaxed">
+                    Give your friends ₹100 off their first bespoke 3D printed object, and receive 200 reward points once their qualifying order is delivered.
+                  </p>
+
+                  <div className="pt-2 flex flex-col sm:flex-row gap-3 max-w-lg">
+                    <div className="flex-1 bg-[#F3F0E9] border border-daxul-black/15 rounded-lg px-4 py-2.5 font-mono text-xs flex items-center justify-between">
+                      <span className="text-daxul-black truncate">{referralsData?.referralLink || "https://daxullabs.com/shop?ref=..."}</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (referralsData?.referralLink) {
+                          navigator.clipboard.writeText(referralsData.referralLink);
+                          setCopiedLink(true);
+                          setTimeout(() => setCopiedLink(false), 2000);
+                        }
+                      }}
+                      className="bg-daxul-lime text-daxul-black border border-daxul-black font-bold text-xs uppercase px-5 py-2.5 rounded-lg flex items-center justify-center gap-1.5"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>{copiedLink ? "Copied!" : "Copy Link"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Friends Invited</span>
+                    <p className="text-2xl font-bold font-mono text-daxul-black mt-2">{referralsData?.stats?.totalInvited ?? 0}</p>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Successful Purchases</span>
+                    <p className="text-2xl font-bold font-mono text-green-600 mt-2">{referralsData?.stats?.successfulCount ?? 0}</p>
+                  </div>
+                  <div className="bg-white border border-daxul-black/10 rounded-xl p-5 shadow-sm">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Pending Orders</span>
+                    <p className="text-2xl font-bold font-mono text-yellow-600 mt-2">{referralsData?.stats?.pendingCount ?? 0}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STORE CREDIT TAB */}
+            {activeTab === "storeCredit" && (
+              <div className="space-y-6">
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#71717A] block">Available Store Credit</span>
+                    <p className="text-3xl font-bold font-mono text-daxul-black mt-1">
+                      ₹{storeCreditData?.account?.availableBalance ?? 0}
+                    </p>
+                    <span className="text-xs text-[#555550]">Can be applied directly at checkout toward any object or custom design.</span>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-daxul-black mb-4">Store Credit History</h3>
+                  {!storeCreditData?.transactions?.length ? (
+                    <p className="text-xs text-[#71717A] py-4 text-center">No store credit transactions yet.</p>
+                  ) : (
+                    <div className="divide-y divide-daxul-black/5 text-xs">
+                      {storeCreditData.transactions.map((tx: any) => (
+                        <div key={tx.id} className="py-3 flex justify-between items-center">
+                          <div>
+                            <span className="font-bold text-daxul-black block">{tx.reason}</span>
+                            <span className="text-[10px] text-[#71717A]">{new Date(tx.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <span className={`font-mono font-bold ${tx.type === "DEBIT" ? "text-red-600" : "text-green-600"}`}>
+                            {tx.type === "DEBIT" ? `-₹${tx.amount}` : `+₹${tx.amount}`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* GIFT CARDS TAB */}
+            {activeTab === "giftCards" && (
+              <div className="space-y-6">
+                <div className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm space-y-4">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-daxul-black">Check Gift Card Balance</h3>
+                  <p className="text-xs text-[#555550]">Enter your 16-character digital gift card code to check remaining balance.</p>
+                  <div className="flex gap-2 max-w-md">
+                    <input
+                      type="text"
+                      placeholder="DXL-XXXX-XXXX-XXXX"
+                      value={giftCardBalanceCheckCode}
+                      onChange={(e) => setGiftCardBalanceCheckCode(e.target.value)}
+                      className="flex-1 bg-[#F3F0E9] border border-daxul-black/15 rounded-lg px-3 py-2 text-xs font-mono uppercase"
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!giftCardBalanceCheckCode.trim()) return;
+                        setCheckingGiftCard(true);
+                        setGiftCardCheckResult(null);
+                        try {
+                          const res = await fetch("/api/gift-cards/check", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ code: giftCardBalanceCheckCode }),
+                          });
+                          const json = await res.json();
+                          if (res.ok) setGiftCardCheckResult(json);
+                          else alert(json.error || "Card not found");
+                        } catch (e) {
+                          alert("Failed to check gift card");
+                        } finally {
+                          setCheckingGiftCard(false);
+                        }
+                      }}
+                      className="bg-daxul-lime text-daxul-black border border-daxul-black font-bold text-xs uppercase px-4 py-2 rounded-lg"
+                    >
+                      {checkingGiftCard ? "Checking..." : "Verify"}
+                    </button>
+                  </div>
+                  {giftCardCheckResult && (
+                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-900">
+                      Balance: <strong>₹{giftCardCheckResult.remainingBalance}</strong> ({giftCardCheckResult.maskedCode})
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* PREFERENCES TAB */}
+            {activeTab === "preferences" && (
+              <div className="space-y-6">
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setSavingPrefs(true);
+                    setPrefsSuccess(false);
+                    try {
+                      const res = await fetch("/api/account/preferences", {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(preferencesData),
+                      });
+                      if (res.ok) setPrefsSuccess(true);
+                    } finally {
+                      setSavingPrefs(false);
+                    }
+                  }}
+                  className="bg-white border border-daxul-black/10 rounded-xl p-6 shadow-sm space-y-6"
+                >
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-daxul-black">
+                    Notification & Marketing Preferences
+                  </h3>
+
+                  {prefsSuccess && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800">
+                      Preferences updated successfully.
+                    </div>
+                  )}
+
+                  <div className="space-y-4 text-xs">
+                    <label className="flex items-center justify-between p-3 bg-[#F3F0E9] rounded-lg cursor-pointer">
+                      <div>
+                        <span className="font-bold text-daxul-black block">Email: Order & Transactional</span>
+                        <span className="text-[11px] text-[#71717A]">Essential order confirmations, 3D printing proof approvals, and tracking.</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={preferencesData.emailTransactional}
+                        onChange={(e) => setPreferencesData({ ...preferencesData, emailTransactional: e.target.checked })}
+                        className="accent-daxul-black"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-3 bg-[#F3F0E9] rounded-lg cursor-pointer">
+                      <div>
+                        <span className="font-bold text-daxul-black block">Email: Studio Releases & Marketing</span>
+                        <span className="text-[11px] text-[#71717A]">Curated design object drops, limited editions, and private offers.</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={preferencesData.emailMarketing}
+                        onChange={(e) => setPreferencesData({ ...preferencesData, emailMarketing: e.target.checked })}
+                        className="accent-daxul-black"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-3 bg-[#F3F0E9] rounded-lg cursor-pointer">
+                      <div>
+                        <span className="font-bold text-daxul-black block">WhatsApp: Order Notifications</span>
+                        <span className="text-[11px] text-[#71717A]">Real-time courier tracking updates and instant design proof alerts.</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={preferencesData.whatsappTransactional}
+                        onChange={(e) => setPreferencesData({ ...preferencesData, whatsappTransactional: e.target.checked })}
+                        className="accent-daxul-black"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between p-3 bg-[#F3F0E9] rounded-lg cursor-pointer">
+                      <div>
+                        <span className="font-bold text-daxul-black block">WhatsApp: Studio Marketing</span>
+                        <span className="text-[11px] text-[#71717A]">Occasional design announcements on WhatsApp (opt-in only).</span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={preferencesData.whatsappMarketing}
+                        onChange={(e) => setPreferencesData({ ...preferencesData, whatsappMarketing: e.target.checked })}
+                        className="accent-daxul-black"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={savingPrefs}
+                      className="bg-daxul-lime text-daxul-black border border-daxul-black font-bold text-xs uppercase px-5 py-2.5 rounded-lg"
+                    >
+                      {savingPrefs ? "Saving..." : "Save Preferences"}
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
           </>
