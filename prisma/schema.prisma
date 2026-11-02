@@ -58,6 +58,12 @@ model User {
   reviews                 ProductReview[]
   savedCart               UserSavedCart?
   questions               ProductQuestion[]
+  loyaltyAccount          LoyaltyAccount?
+  referralCode            ReferralCode?
+  referralsMade           Referral[]             @relation("Referrer")
+  referralsReceived       Referral[]             @relation("Referred")
+  storeCreditAccount      StoreCreditAccount?
+  giftCardsPurchased      GiftCard[]             @relation("GiftCardPurchaser")
   accounts                Account[]
   sessions                Session[]
   createdAt               DateTime       @default(now())
@@ -280,6 +286,16 @@ model Order {
   cancellationRequestedAt DateTime?
   refundStatus           String?             @default("none")
   refundedAmount         Float               @default(0)
+  loyaltyPointsUsed      Int                 @default(0)
+  loyaltyPointsDiscount  Float               @default(0)
+  storeCreditUsed        Float               @default(0)
+  giftCardCodeUsed       String?
+  giftCardDiscount       Float               @default(0)
+  referrals              Referral[]
+  giftCards              GiftCard[]          @relation("GiftCardOrder")
+  loyaltyTransactions    LoyaltyTransaction[]
+  giftCardTransactions   GiftCardTransaction[]
+  storeCreditTransactions StoreCreditTransaction[]
   designProofUrl         String?
   designStatus           String              @default("pending") // pending, proof_uploaded, approved, changes_requested
   designNotes            String?
@@ -916,6 +932,294 @@ model FunnelEvent {
   @@index([sessionId, step])
   @@index([productId, step])
   @@index([orderId])
+}
+
+// ============================================================================
+// PHASE C: RETENTION, LOYALTY, REFERRALS, STORE CREDIT, GIFT CARDS & LIFECYCLE
+// ============================================================================
+
+model RetentionSettings {
+  id                               String   @id @default("default")
+  // Feature Flags (Default FALSE)
+  loyaltyEnabled                   Boolean  @default(false)
+  referralsEnabled                 Boolean  @default(false)
+  giftCardsEnabled                 Boolean  @default(false)
+  storeCreditEnabled               Boolean  @default(false)
+  whatsappEnabled                  Boolean  @default(false)
+  winbackEnabled                   Boolean  @default(false)
+
+  // Loyalty Config
+  pointsPer100Rupees               Int      @default(1)       // ₹100 spend = X points
+  redemptionValuePerPoint          Float    @default(1.0)     // 1 point = ₹1
+  minimumRedemptionPoints          Int      @default(50)      // Minimum points to redeem
+  maxOrderRedemptionPercent        Float    @default(20.0)    // Max 20% of order payable via points
+  pointExpiryDays                  Int      @default(365)     // Days until points expire (0 = never)
+  loyaltyPendingDays               Int      @default(7)       // Days after delivery before points become AVAILABLE
+  loyaltyEarningMinOrder           Float    @default(0)       // Minimum order value to earn points
+  excludedProductIds               String[] @default([])
+  excludedCollectionIds            String[] @default([])
+
+  // Referral Config
+  referralRewardType               String   @default("points") // points, credit, coupon
+  referralRewardAmount             Float    @default(200)      // 200 points or ₹200
+  referralReferredRewardAmount     Float    @default(100)      // discount/reward for new customer
+  referralMinOrderSpend            Float    @default(999)      // Min spend by referred friend
+  referralQualifyEvent             String   @default("DELIVERED") // PAID, DELIVERED
+
+  // Gift Card Config
+  giftCardExpiryDays               Int      @default(365)
+  customGiftCardMin                Float    @default(500)
+  customGiftCardMax                Float    @default(50000)
+
+  // Review & Win-back Automation Config
+  reviewRequestDelayDays           Int      @default(5)
+  reviewRewardPoints               Int      @default(25)
+  winbackInactivityDays            Int      @default(60)
+  winbackDiscountPercent           Float    @default(15)
+
+  // WhatsApp Config
+  whatsappProvider                 String   @default("mock") // mock, meta, interakt, wati, gupshup
+  whatsappApiKey                   String?
+  whatsappApiUrl                   String?
+  whatsappPhoneNumberId            String?
+
+  createdAt                        DateTime @default(now())
+  updatedAt                        DateTime @updatedAt
+}
+
+model LoyaltyAccount {
+  id              String               @id @default(cuid())
+  userId          String               @unique
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availablePoints Int                  @default(0)
+  pendingPoints   Int                  @default(0)
+  lifetimeEarned  Int                  @default(0)
+  lifetimeRedeemed Int                 @default(0)
+  transactions    LoyaltyTransaction[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([availablePoints])
+}
+
+model LoyaltyTransaction {
+  id          String         @id @default(cuid())
+  accountId   String
+  account     LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type        String         // EARN, REDEEM, REVERSAL, ADMIN_CREDIT, ADMIN_DEBIT, EXPIRY, REFERRAL_REWARD, REVIEW_REWARD
+  points      Int
+  status      String         // PENDING, AVAILABLE, REDEEMED, REVERSED, EXPIRED
+  reason      String
+  orderId     String?
+  order       Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  refundId    String?
+  referralId  String?
+  referral    Referral?      @relation(fields: [referralId], references: [id], onDelete: SetNull)
+  adminUserId String?
+  expiresAt   DateTime?
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([type, status])
+  @@index([orderId])
+  @@index([expiresAt])
+}
+
+model ReferralCode {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String     @unique
+  active    Boolean    @default(true)
+  referrals Referral[]
+  createdAt DateTime   @default(now())
+
+  @@index([code])
+}
+
+model Referral {
+  id                 String               @id @default(cuid())
+  referrerUserId     String
+  referrerUser       User                 @relation("Referrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  referredUserId     String
+  referredUser       User                 @relation("Referred", fields: [referredUserId], references: [id], onDelete: Cascade)
+  codeId             String
+  code               ReferralCode         @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  qualifyingOrderId  String?
+  qualifyingOrder    Order?               @relation(fields: [qualifyingOrderId], references: [id], onDelete: SetNull)
+  status             String               @default("PENDING") // PENDING, QUALIFIED, REWARDED, REJECTED
+  rejectionReason    String?
+  qualifiedAt        DateTime?
+  rewardedAt         DateTime?
+  rewards            ReferralReward[]
+  loyaltyTransactions LoyaltyTransaction[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@unique([referrerUserId, referredUserId])
+  @@index([status, createdAt])
+  @@index([codeId])
+  @@index([qualifyingOrderId])
+}
+
+model ReferralReward {
+  id         String   @id @default(cuid())
+  referralId String
+  referral   Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  rewardType String   // points, credit, coupon
+  amount     Float
+  status     String   @default("ISSUED") // ISSUED, REVERSED
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([referralId])
+}
+
+model GiftCard {
+  id               String                @id @default(cuid())
+  codeHash         String                @unique // SHA-256 hash of redemption code
+  maskedCode       String                // e.g. DXL-••••-AB12
+  originalAmount   Float
+  remainingBalance Float
+  currency         String                @default("INR")
+  status           String                @default("ACTIVE") // ACTIVE, USED, EXPIRED, CANCELLED
+  purchaserUserId  String?
+  purchaser        User?                 @relation("GiftCardPurchaser", fields: [purchaserUserId], references: [id], onDelete: SetNull)
+  recipientName    String?
+  recipientEmail   String?
+  recipientPhone   String?
+  personalMessage  String?               @db.Text
+  deliveryDate     DateTime?
+  orderId          String?
+  order            Order?                @relation("GiftCardOrder", fields: [orderId], references: [id], onDelete: SetNull)
+  expiresAt        DateTime?
+  transactions     GiftCardTransaction[]
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@index([status, remainingBalance])
+  @@index([recipientEmail])
+  @@index([purchaserUserId])
+}
+
+model GiftCardTransaction {
+  id         String   @id @default(cuid())
+  giftCardId String
+  giftCard   GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
+  type       String   // ISSUE, DEBIT, REFUND_CREDIT, CANCEL, EXPIRE
+  amount     Float
+  orderId    String?
+  order      Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  note       String?
+  createdAt  DateTime @default(now())
+
+  @@index([giftCardId, createdAt])
+  @@index([orderId])
+}
+
+model StoreCreditAccount {
+  id               String                   @id @default(cuid())
+  userId           String                   @unique
+  user             User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availableBalance Float                    @default(0)
+  lifetimeCredited Float                    @default(0)
+  lifetimeDebited  Float                    @default(0)
+  transactions     StoreCreditTransaction[]
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+
+  @@index([availableBalance])
+}
+
+model StoreCreditTransaction {
+  id          String             @id @default(cuid())
+  accountId   String
+  account     StoreCreditAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type        String             // CREDIT, DEBIT, REVERSAL, EXPIRY
+  amount      Float
+  balanceAfter Float             @default(0)
+  reason      String
+  orderId     String?
+  order       Order?             @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  adminUserId String?
+  expiresAt   DateTime?
+  metadata    Json?
+  createdAt   DateTime           @default(now())
+
+  @@index([accountId, createdAt])
+  @@index([type])
+  @@index([orderId])
+}
+
+model CustomerSegment {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  rules       Json     // array of conditions: { field, operator, value }
+  isActive    Boolean  @default(true)
+  cachedCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model NotificationAutomation {
+  id           String            @id @default(cuid())
+  name         String
+  triggerEvent String            // WELCOME, ABANDONED_CHECKOUT, ORDER_FOLLOWUP, REVIEW_REQUEST, BACK_IN_STOCK, REFERRAL_REWARD, GIFT_CARD_DELIVERY, STORE_CREDIT_ISSUED, LOYALTY_POINTS_EARNED, WINBACK
+  delayMinutes Int               @default(0) // 0 = instant, e.g. 4320 = 3 days, 7200 = 5 days
+  channel      String            @default("email") // email, whatsapp, both
+  templateId   String?
+  template     NotificationTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  audience     String            @default("ALL") // ALL or segment slug
+  maxFrequencyDays Int           @default(0) // 0 = no cap, e.g. 30 = max once every 30 days
+  isEnabled    Boolean           @default(false)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  jobs         NotificationJob[]
+
+  @@index([triggerEvent, isEnabled])
+}
+
+model NotificationTemplate {
+  id          String                   @id @default(cuid())
+  name        String
+  channel     String                   @default("email") // email, whatsapp
+  subject     String?                  // for email
+  body        String                   @db.Text // supports sanitized variables e.g. {{customer_name}}
+  variables   String[]                 @default([]) // approved variable names
+  automations NotificationAutomation[]
+  jobs        NotificationJob[]
+  createdAt   DateTime                 @default(now())
+  updatedAt   DateTime                 @updatedAt
+}
+
+model NotificationJob {
+  id             String                  @id @default(cuid())
+  automationId   String?
+  automation     NotificationAutomation? @relation(fields: [automationId], references: [id], onDelete: SetNull)
+  templateId     String?
+  template       NotificationTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  channel        String                  // email, whatsapp
+  recipient      String
+  recipientName  String?
+  subject        String?
+  payload        Json
+  status         String                  @default("PENDING") // PENDING, PROCESSING, SENT, FAILED, CANCELLED
+  scheduledFor   DateTime                @default(now())
+  processedAt    DateTime?
+  attempts       Int                     @default(0)
+  maxAttempts    Int                     @default(3)
+  lastError      String?
+  idempotencyKey String?                 @unique
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@index([status, scheduledFor])
+  @@index([recipient, status])
 }
 
 
