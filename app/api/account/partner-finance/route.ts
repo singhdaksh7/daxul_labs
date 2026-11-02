@@ -68,6 +68,54 @@ export async function GET(req: NextRequest) {
 
   const account = partner.financialAccount;
 
+  // EMI overview: every EMI this partner is part of (as payer or sharer), visible to all partners involved.
+  const emiSchedules = await prisma.expenseEmiSchedule.findMany({
+    where: {
+      OR: [
+        { expense: { paidByPartnerId: partner.id } },
+        { installments: { some: { partnerObligations: { some: { partnerId: partner.id } } } } },
+      ],
+    },
+    include: {
+      expense: { select: { title: true, expenseNumber: true, paidByPartner: { select: { id: true, displayName: true } } } },
+      installments: {
+        orderBy: { installmentNumber: 'asc' },
+        include: { partnerObligations: { include: { partner: { select: { id: true, displayName: true } } } } },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  const emiOverview = emiSchedules.map((sch) => ({
+    id: sch.id,
+    title: sch.expense.title,
+    expenseNumber: sch.expense.expenseNumber,
+    payer: sch.expense.paidByPartner?.displayName ?? null,
+    iAmPayer: sch.expense.paidByPartner?.id === partner.id,
+    totalEmiCount: sch.totalEmiCount,
+    purchasePriceRupees: paiseToRupees(sch.purchasePricePaise),
+    downPaymentRupees: paiseToRupees(sch.downPaymentPaise),
+    financedRupees: paiseToRupees(sch.financedAmountPaise),
+    firstEmiDate: sch.firstEmiDate,
+    installments: sch.installments.map((i) => ({
+      id: i.id,
+      number: i.installmentNumber,
+      dueDate: i.dueDate,
+      amountRupees: paiseToRupees(i.amountPaise),
+      status: i.status,
+      paidAt: i.paidAt,
+      shares: i.partnerObligations.map((o) => ({
+        partnerId: o.partnerId,
+        partner: o.partner.displayName,
+        isMe: o.partnerId === partner.id,
+        isPayer: o.partnerId === sch.expense.paidByPartner?.id,
+        shareRupees: paiseToRupees(o.shareAmountPaise),
+        paidRupees: paiseToRupees(o.amountPaidPaise),
+        remainingRupees: paiseToRupees(o.remainingPaise),
+        status: o.status,
+      })),
+    })),
+  }));
+
   return NextResponse.json({
     partner: {
       id: partner.id,
@@ -96,6 +144,7 @@ export async function GET(req: NextRequest) {
       remainingRupees: paiseToRupees(s.remainingPaise),
       status: s.status,
     })),
+    emiOverview,
     unpaidEmiObligations: partner.emiObligations.map((o) => ({
       id: o.id,
       expenseTitle: o.emiInstallment.emiSchedule.expense.title,

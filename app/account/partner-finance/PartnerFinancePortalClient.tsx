@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { User, CreditCard, Clock, Coins, TrendingUp, CheckCircle2, AlertCircle, ArrowUpRight, Upload } from "lucide-react";
+import { Calendar, User, CreditCard, Clock, Coins, TrendingUp, CheckCircle2, AlertCircle, ArrowUpRight, Upload } from "lucide-react";
 
 export default function PartnerFinancePortalClient() {
   const [data, setData] = useState<any>(null);
@@ -202,6 +202,82 @@ export default function PartnerFinancePortalClient() {
                   </tbody>
                 </table>
               </div>
+            </div>
+
+            {/* EMI schedule, upcoming dues and who has paid */}
+            <div className="rounded-xl border border-[#242426] bg-[#151515] p-6 space-y-6" id="emi-overview">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-[#F3F0E9] flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-[#C8FF35]" />
+                EMI Schedule & Upcoming Payments
+              </h2>
+              {(data.emiOverview || []).length === 0 && (
+                <p className="py-4 text-center text-xs text-gray-500">No EMI plans yet.</p>
+              )}
+              {(data.emiOverview || []).map((sch: any) => {
+                const paid = sch.installments.filter((i: any) => i.status === "PAID").length;
+                const upcoming = sch.installments.filter((i: any) => i.status !== "PAID").slice(0, 3);
+                const inr = (n: number) => `₹${Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+                const d = (x: string) => new Date(x).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+                return (
+                  <div key={sch.id} className="space-y-4 rounded-lg border border-[#242426] bg-[#0B0B0C] p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <p className="text-sm font-bold text-[#F3F0E9]">{sch.title}</p>
+                        <p className="text-[11px] text-gray-400">
+                          Paid by {sch.payer}{sch.iAmPayer ? " (you)" : ""} • {sch.totalEmiCount} months • {paid}/{sch.installments.length} paid to lender
+                        </p>
+                      </div>
+                      <span className="text-sm font-bold text-[#F3F0E9]">{inr(sch.purchasePriceRupees)}</span>
+                    </div>
+
+                    {upcoming.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Upcoming</p>
+                        {upcoming.map((i: any) => {
+                          const mine = i.shares.find((x: any) => x.isMe);
+                          return (
+                            <div key={i.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#151515] px-3.5 py-3 text-xs">
+                              <span className="text-[#F3F0E9]">Installment {i.number} • due {d(i.dueDate)}</span>
+                              <span className="text-gray-400">
+                                Total {inr(i.amountRupees)}{mine && !mine.isPayer ? ` • your share ${inr(mine.shareRupees)}` : ""}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <details className="group">
+                      <summary className="cursor-pointer text-xs font-semibold text-[#C8FF35] hover:underline">All installments & who has paid</summary>
+                      <div className="mt-4 space-y-3">
+                        {sch.installments.map((i: any) => (
+                          <div key={i.id} className="space-y-2 rounded-lg border border-[#242426] p-3.5 text-xs">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="font-medium text-[#F3F0E9]">#{i.number} • {inr(i.amountRupees)} • due {d(i.dueDate)}</span>
+                              <span className={i.status === "PAID" ? "text-[#C8FF35]" : new Date(i.dueDate).getTime() < Date.now() ? "text-red-300" : "text-gray-400"}>
+                                {i.status === "PAID" ? `Paid to lender${i.paidAt ? ` on ${d(i.paidAt)}` : ""}` : new Date(i.dueDate).getTime() < Date.now() ? "Overdue" : "Upcoming"}
+                              </span>
+                            </div>
+                            <div className="space-y-1.5">
+                              {i.shares.map((x: any) => (
+                                <div key={x.partnerId} className="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                                  <span className={x.isMe ? "font-semibold text-[#F3F0E9]" : "text-gray-400"}>{x.partner}{x.isMe ? " (you)" : ""}</span>
+                                  <span className="text-gray-400">
+                                    {inr(x.shareRupees)} •{" "}
+                                    <span className={x.status === "PAID" ? "text-[#C8FF35]" : x.isPayer ? "text-gray-400" : "text-yellow-300"}>
+                                      {x.isPayer ? "own share" : x.status === "PAID" ? "paid" : i.status === "PAID" ? `pending ${inr(x.remainingRupees)}` : "not due yet"}
+                                    </span>
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Private Ledger Timeline */}
