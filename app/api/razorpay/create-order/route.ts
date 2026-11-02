@@ -8,6 +8,11 @@ import { maybeReleaseExpiredReservations } from '@/lib/reservations';
 import { reservationExpiry } from '@/lib/reservationPlan';
 import { sendOrderConfirmationEmail } from '@/lib/notifications/email';
 
+import { redeemLoyaltyPoints } from '@/lib/retention/loyalty';
+import { redeemGiftCard } from '@/lib/retention/giftCards';
+import { debitStoreCredit } from '@/lib/retention/storeCredit';
+import { registerReferralAttribution } from '@/lib/retention/referrals';
+
 /**
  * Request payload (client prices are NEVER trusted; optional price hints are only
  * compared against the server result and rejected on mismatch):
@@ -33,6 +38,10 @@ const bodySchema = z.object({
   couponCode: z.string().max(64).optional().nullable(),
   paymentMethod: z.enum(['prepaid', 'cod']).default('prepaid'),
   shippingMethod: z.enum(['STANDARD', 'EXPRESS']).optional().nullable(),
+  referralCode: z.string().max(64).optional().nullable(),
+  loyaltyPointsToRedeem: z.number().int().min(0).optional().nullable(),
+  storeCreditToApply: z.number().min(0).optional().nullable(),
+  giftCardCode: z.string().max(64).optional().nullable(),
   customer: z.object({
     name: z.string().trim().min(1),
     email: z.string().trim().email(),
@@ -105,14 +114,32 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    const { items, couponCode, paymentMethod, customer, shippingMethod } = parsed.data;
+    const {
+      items,
+      couponCode,
+      paymentMethod,
+      customer,
+      shippingMethod,
+      loyaltyPointsToRedeem,
+      storeCreditToApply,
+      giftCardCode,
+      referralCode,
+    } = parsed.data;
     const clientTotal = parsed.data.expectedTotal ?? parsed.data.totalAmount;
 
     // Free any expired prepaid reservations first so their stock is purchasable (throttled, never throws).
     await maybeReleaseExpiredReservations();
 
     // 1. Authoritative computation: the SAME function /api/quote uses.
-    const comp = await computeCheckout({ items, couponCode, paymentMethod, shippingMethod });
+    const comp = await computeCheckout({
+      items,
+      couponCode,
+      paymentMethod,
+      shippingMethod,
+      loyaltyPointsToRedeem,
+      storeCreditToApply,
+      giftCardCode,
+    });
     if (comp.issues.length) {
       return NextResponse.json({ error: comp.issues[0].message, issues: comp.issues }, { status: 400 });
     }
@@ -221,6 +248,11 @@ export async function POST(req: NextRequest) {
           discountAmount,
           shippingFee,
           codFee,
+          loyaltyPointsUsed: comp.loyalty.pointsUsed,
+          loyaltyPointsDiscount: comp.loyalty.discount,
+          giftCardCodeUsed: comp.giftCard.code,
+          giftCardDiscount: comp.giftCard.appliedAmount,
+          storeCreditUsed: comp.storeCredit.appliedAmount,
           shippingMethod: shippingMethodFinal,
           reservationExpiresAt,
           couponCode: appliedCouponCode,
@@ -271,6 +303,60 @@ export async function POST(req: NextRequest) {
             ],
           },
         });
+      }
+
+      // Execute atomic ledger debits for redemptions
+      if (existingUser?.id && comp.loyalty.pointsUsed > 0) {
+        const lRes = await redeemLoyaltyPoints(
+          {
+            userId: existingUser.id,
+            pointsToRedeem: comp.loyalty.pointsUsed,
+            orderId: ord.id,
+            orderNumber: ord.orderNumber,
+            orderSubtotal: comp.subtotal,
+          },
+          tx,
+        );
+        if (!lRes.success) throw new CheckoutError(lRes.error || 'Failed to redeem loyalty points');
+      }
+
+      if (comp.giftCard.code && comp.giftCard.appliedAmount > 0) {
+        const gcRes = await redeemGiftCard(
+          {
+            rawCode: comp.giftCard.code,
+            amountToSpend: comp.giftCard.appliedAmount,
+            orderId: ord.id,
+            note: `Redeemed for order #${ord.orderNumber}`,
+          },
+          tx,
+        );
+        if (!gcRes.success) throw new CheckoutError(gcRes.error || 'Failed to redeem gift card');
+      }
+
+      if (existingUser?.id && comp.storeCredit.appliedAmount > 0) {
+        const scRes = await debitStoreCredit(
+          {
+            userId: existingUser.id,
+            amountToSpend: comp.storeCredit.appliedAmount,
+            orderId: ord.id,
+            reason: `Used store credit on order #${ord.orderNumber}`,
+          },
+          tx,
+        );
+        if (!scRes.success) throw new CheckoutError(scRes.error || 'Failed to apply store credit');
+      }
+
+      // Referral Attribution on order placement if new customer
+      if (referralCode && existingUser?.id) {
+        await registerReferralAttribution(
+          {
+            code: referralCode,
+            referredUserId: existingUser.id,
+            referredEmail: customer.email,
+            referredPhone: customer.phone,
+          },
+          tx,
+        );
       }
 
       return ord;

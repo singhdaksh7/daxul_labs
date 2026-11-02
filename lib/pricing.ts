@@ -22,6 +22,9 @@ import {
   type ShippingSettings,
 } from '@/lib/shipping';
 
+import { getRetentionSettings } from '@/lib/retention/settings';
+import { getGiftCardByCode } from '@/lib/retention/giftCards';
+
 export class PricingError extends Error {
   status: number;
   constructor(message: string, status = 400) {
@@ -363,10 +366,14 @@ export interface CheckoutRequest {
   couponCode?: string | null;
   paymentMethod?: 'prepaid' | 'cod';
   shippingMethod?: ShippingMethod | null;
+  loyaltyPointsToRedeem?: number | null;
+  storeCreditToApply?: number | null;
+  giftCardCode?: string | null;
+  userId?: string | null;
 }
 
 export interface CheckoutIssue {
-  code: 'line' | 'stock' | 'coupon' | 'shipping' | 'cod';
+  code: 'line' | 'stock' | 'coupon' | 'shipping' | 'cod' | 'loyalty' | 'storeCredit' | 'giftCard';
   message: string;
   index?: number;
 }
@@ -379,6 +386,18 @@ export interface CheckoutComputation {
   couponEvaluation: CouponEvaluation | null;
   discountAmount: number;
   appliedCoupon: CouponLike | null;
+  loyalty: {
+    pointsUsed: number;
+    discount: number;
+  };
+  giftCard: {
+    code: string | null;
+    appliedAmount: number;
+    remainingBalance: number;
+  };
+  storeCredit: {
+    appliedAmount: number;
+  };
   shipping: {
     method: ShippingMethod | null;
     fee: number;
@@ -523,7 +542,77 @@ export async function computeCheckout(
     issues.push({ code: 'cod', message: cod.reason ?? 'Cash on delivery is not available for this order.' });
   }
 
-  const total = computeTotal({ subtotal, discountAmount, shippingFee, codFee });
+  // Intermediate order payable before loyalty, gift card, and store credit
+  // Calculation Order:
+  // 1. Subtotal
+  // 2. Coupon Discount
+  // 3. Shipping Fee
+  // 4. COD Fee
+  // 5. Loyalty Points Discount
+  // 6. Gift Card Discount
+  // 7. Store Credit Discount
+  // Total payable never goes below zero.
+  const retentionSettings = await getRetentionSettings();
+  let loyaltyUsed = 0;
+  let loyaltyDiscount = 0;
+
+  let currentPayable = roundMoney(Math.max(0, subtotal - discountAmount + shippingFee + codFee));
+
+  if (req.loyaltyPointsToRedeem && req.loyaltyPointsToRedeem > 0) {
+    if (!retentionSettings.loyaltyEnabled) {
+      issues.push({ code: 'loyalty', message: 'Loyalty rewards program is currently inactive.' });
+    } else if (req.loyaltyPointsToRedeem < retentionSettings.minimumRedemptionPoints) {
+      issues.push({
+        code: 'loyalty',
+        message: `Minimum ${retentionSettings.minimumRedemptionPoints} points required for redemption.`,
+      });
+    } else {
+      const discountVal = req.loyaltyPointsToRedeem * retentionSettings.redemptionValuePerPoint;
+      const maxDiscount = (subtotal * retentionSettings.maxOrderRedemptionPercent) / 100;
+      if (discountVal > maxDiscount) {
+        issues.push({
+          code: 'loyalty',
+          message: `Points can cover up to ${retentionSettings.maxOrderRedemptionPercent}% of order subtotal (max ₹${maxDiscount.toFixed(2)}).`,
+        });
+      } else {
+        loyaltyUsed = req.loyaltyPointsToRedeem;
+        loyaltyDiscount = roundMoney(Math.min(currentPayable, discountVal));
+        currentPayable = roundMoney(Math.max(0, currentPayable - loyaltyDiscount));
+      }
+    }
+  }
+
+  let giftCardApplied = 0;
+  let giftCardRemaining = 0;
+  let giftCardCodeFinal: string | null = null;
+
+  if (req.giftCardCode?.trim()) {
+    giftCardCodeFinal = req.giftCardCode.trim().toUpperCase();
+    if (!retentionSettings.giftCardsEnabled) {
+      issues.push({ code: 'giftCard', message: 'Gift cards are currently inactive.' });
+    } else {
+      const card = await getGiftCardByCode(giftCardCodeFinal);
+      if (!card) {
+        issues.push({ code: 'giftCard', message: 'Invalid or inactive gift card code.' });
+      } else {
+        giftCardApplied = roundMoney(Math.min(currentPayable, card.remainingBalance));
+        giftCardRemaining = roundMoney(card.remainingBalance - giftCardApplied);
+        currentPayable = roundMoney(Math.max(0, currentPayable - giftCardApplied));
+      }
+    }
+  }
+
+  let storeCreditApplied = 0;
+  if (req.storeCreditToApply && req.storeCreditToApply > 0) {
+    if (!retentionSettings.storeCreditEnabled) {
+      issues.push({ code: 'storeCredit', message: 'Store credit is currently inactive.' });
+    } else {
+      storeCreditApplied = roundMoney(Math.min(currentPayable, req.storeCreditToApply));
+      currentPayable = roundMoney(Math.max(0, currentPayable - storeCreditApplied));
+    }
+  }
+
+  const finalTotal = currentPayable;
 
   return {
     paymentMethod,
@@ -533,10 +622,22 @@ export async function computeCheckout(
     couponEvaluation,
     discountAmount,
     appliedCoupon,
+    loyalty: {
+      pointsUsed: loyaltyUsed,
+      discount: loyaltyDiscount,
+    },
+    giftCard: {
+      code: giftCardCodeFinal,
+      appliedAmount: giftCardApplied,
+      remainingBalance: giftCardRemaining,
+    },
+    storeCredit: {
+      appliedAmount: storeCreditApplied,
+    },
     shipping: { method, fee: shippingFee, freeApplied, amountToFree, options },
     cod,
     codFee,
-    total,
+    total: finalTotal,
     settings,
     issues,
   };

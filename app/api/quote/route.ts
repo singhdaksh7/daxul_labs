@@ -33,6 +33,10 @@ const bodySchema = z.object({
   paymentMethod: z.enum(['prepaid', 'cod']).optional(),
   shippingMethod: z.enum(['STANDARD', 'EXPRESS']).optional().nullable(),
   pincode: z.string().trim().regex(/^\d{6}$/, 'Invalid pincode').optional().or(z.literal('')),
+  loyaltyPointsToRedeem: z.number().int().min(0).optional().nullable(),
+  storeCreditToApply: z.number().min(0).optional().nullable(),
+  giftCardCode: z.string().max(64).optional().nullable(),
+  userId: z.string().optional().nullable(),
 });
 
 // Light per-IP in-memory limiter: 90 quotes / minute / process.
@@ -69,8 +73,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Invalid quote request: ${first.path.join('.') || 'body'} - ${first.message}` }, { status: 400 });
   }
   try {
-    const { items, couponCode, paymentMethod, shippingMethod } = parsed.data;
-    const comp = await computeCheckout({ items, couponCode, paymentMethod, shippingMethod });
+    const {
+      items,
+      couponCode,
+      paymentMethod,
+      shippingMethod,
+      loyaltyPointsToRedeem,
+      storeCreditToApply,
+      giftCardCode,
+      userId,
+    } = parsed.data;
+    const comp = await computeCheckout({
+      items,
+      couponCode,
+      paymentMethod,
+      shippingMethod,
+      loyaltyPointsToRedeem,
+      storeCreditToApply,
+      giftCardCode,
+      userId,
+    });
     return NextResponse.json(toQuoteResponse(comp), { headers: { 'Cache-Control': 'no-store' } });
   } catch (err) {
     console.error('POST /api/quote', err);

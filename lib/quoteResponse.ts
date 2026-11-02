@@ -37,6 +37,9 @@ export interface QuoteResponse {
   };
   cod: { eligible: boolean; reason: string | null; fee: number };
   codFee: number;
+  loyalty: { pointsUsed: number; discount: number };
+  giftCard: { code: string | null; appliedAmount: number; remainingBalance: number };
+  storeCredit: { appliedAmount: number };
   total: number;
   issues: Array<{ code: string; message: string; index?: number }>;
 }
@@ -73,6 +76,9 @@ export function toQuoteResponse(c: CheckoutComputation): QuoteResponse {
           }
       : null,
     discountAmount: c.discountAmount,
+    loyalty: c.loyalty,
+    giftCard: c.giftCard,
+    storeCredit: c.storeCredit,
     shipping: {
       method: c.shipping.method,
       fee: c.shipping.fee,
