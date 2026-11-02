@@ -11,12 +11,14 @@ test.describe('Partner Finance, Expense, EMI & Settlement System E2E', () => {
   for (const vp of viewports) {
     test(`Finance dashboard responsive layout at viewport ${vp.name}`, async ({ page }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height });
-      const healthRes = await page.request.get('/api/health');
-      expect(healthRes.status()).toBe(200);
-
+      
       // Verify unauthenticated security rejection
       const unauthFinance = await page.request.get('/api/admin/finance/dashboard');
       expect([401, 403, 307]).toContain(unauthFinance.status());
+
+      // Partner portal unauthenticated security rejection
+      const unauthPortal = await page.request.get('/api/account/partner-finance');
+      expect([401, 403, 307]).toContain(unauthPortal.status());
     });
   }
 
@@ -46,6 +48,16 @@ test.describe('Partner Finance, Expense, EMI & Settlement System E2E', () => {
         periodId: 'dummy-period',
       },
     });
+    expect([401, 403]).toContain(res.status());
+  });
+
+  test('Finance export endpoint enforces authentication', async ({ request }) => {
+    const res = await request.get('/api/admin/finance/export?type=expenses');
+    expect([401, 403]).toContain(res.status());
+  });
+
+  test('Finance partner management enforces Super Admin authentication', async ({ request }) => {
+    const res = await request.get('/api/admin/finance/partners');
     expect([401, 403]).toContain(res.status());
   });
 });

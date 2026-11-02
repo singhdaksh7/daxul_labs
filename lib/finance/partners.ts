@@ -1,125 +1,109 @@
 import { prisma } from '@/lib/db';
 import { Prisma } from '@prisma/client';
 
-export interface EnsurePartnersResult {
-  daksh: any;
-  partnerB: any;
-  partnerC: any;
+export interface ConfigurePartnerParams {
+  userId: string;
+  displayName: string;
+  email: string;
+  phone?: string | null;
+  ownershipPercentage: number;
+  expenseSplitPercentage: number;
+  profitSplitPercentage: number;
+  isPrimarySettlementPartner?: boolean;
+  notes?: string | null;
 }
 
 /**
- * Seeds or fetches the 3 official partners with exactly 33.333333% equal split.
- * Daksh is marked as isPrimarySettlementPartner = true.
+ * Onboards an EXISTING authenticated User as a BusinessPartner.
+ * Strictly verifies the User exists. Never creates dummy users or accounts.
  */
-export async function getOrCreateDefaultPartners(txClient: Prisma.TransactionClient = prisma as any): Promise<EnsurePartnersResult> {
-  // Find or create Daksh User
-  let dakshUser = await txClient.user.findFirst({
-    where: {
-      OR: [
-        { email: 'manavdaksh7@gmail.com' },
-        { role: 'SUPER_ADMIN' },
-      ],
-    },
+export async function configureBusinessPartner(
+  params: ConfigurePartnerParams,
+  txClient: Prisma.TransactionClient = prisma as any,
+) {
+  const user = await txClient.user.findUnique({
+    where: { id: params.userId },
   });
+  if (!user) {
+    throw new Error(`User with ID ${params.userId} does not exist. A partner must link to an existing user.`);
+  }
 
-  if (!dakshUser) {
-    dakshUser = await txClient.user.create({
-      data: {
-        email: 'daksh@daxullabs.com',
-        name: 'Daksh Singh',
-        role: 'SUPER_ADMIN',
-      },
+  // If this partner is set as primary settlement partner, unset any existing primary partner
+  if (params.isPrimarySettlementPartner) {
+    await txClient.businessPartner.updateMany({
+      where: { isPrimarySettlementPartner: true },
+      data: { isPrimarySettlementPartner: false },
     });
   }
 
-  // Find or create Partner B User
-  let partnerBUser = await txClient.user.findFirst({
-    where: { email: 'partner.b@daxullabs.com' },
-  });
-  if (!partnerBUser) {
-    partnerBUser = await txClient.user.create({
-      data: {
-        email: 'partner.b@daxullabs.com',
-        name: 'Partner B',
-        role: 'ADMIN',
-      },
-    });
-  }
-
-  // Find or create Partner C User
-  let partnerCUser = await txClient.user.findFirst({
-    where: { email: 'partner.c@daxullabs.com' },
-  });
-  if (!partnerCUser) {
-    partnerCUser = await txClient.user.create({
-      data: {
-        email: 'partner.c@daxullabs.com',
-        name: 'Partner C',
-        role: 'ADMIN',
-      },
-    });
-  }
-
-  // Upsert BusinessPartner records
-  const daksh = await txClient.businessPartner.upsert({
-    where: { userId: dakshUser.id },
+  const partner = await txClient.businessPartner.upsert({
+    where: { userId: user.id },
     create: {
-      userId: dakshUser.id,
-      displayName: 'Daksh',
-      email: dakshUser.email,
-      ownershipPercentage: 33.333334, // 1st partner gets the fractional micro-percentage for exact 100%
-      expenseSplitPercentage: 33.333334,
-      profitSplitPercentage: 33.333334,
-      isPrimarySettlementPartner: true,
-      notes: 'Founder & Primary Settlement / Collection Partner',
+      userId: user.id,
+      displayName: params.displayName.trim(),
+      email: user.email,
+      phone: params.phone,
+      ownershipPercentage: params.ownershipPercentage,
+      expenseSplitPercentage: params.expenseSplitPercentage,
+      profitSplitPercentage: params.profitSplitPercentage,
+      isPrimarySettlementPartner: params.isPrimarySettlementPartner ?? false,
+      notes: params.notes,
     },
     update: {
-      isPrimarySettlementPartner: true,
+      displayName: params.displayName.trim(),
+      phone: params.phone,
+      ownershipPercentage: params.ownershipPercentage,
+      expenseSplitPercentage: params.expenseSplitPercentage,
+      profitSplitPercentage: params.profitSplitPercentage,
+      isPrimarySettlementPartner: params.isPrimarySettlementPartner ?? false,
+      notes: params.notes,
     },
     include: { financialAccount: true },
   });
 
-  const partnerB = await txClient.businessPartner.upsert({
-    where: { userId: partnerBUser.id },
-    create: {
-      userId: partnerBUser.id,
-      displayName: 'Partner B',
-      email: partnerBUser.email,
-      ownershipPercentage: 33.333333,
-      expenseSplitPercentage: 33.333333,
-      profitSplitPercentage: 33.333333,
-      isPrimarySettlementPartner: false,
-      notes: 'Operations & Co-founder',
-    },
+  // Ensure PartnerFinancialAccount exists
+  await txClient.partnerFinancialAccount.upsert({
+    where: { partnerId: partner.id },
+    create: { partnerId: partner.id },
     update: {},
-    include: { financialAccount: true },
   });
 
-  const partnerC = await txClient.businessPartner.upsert({
-    where: { userId: partnerCUser.id },
-    create: {
-      userId: partnerCUser.id,
-      displayName: 'Partner C',
-      email: partnerCUser.email,
-      ownershipPercentage: 33.333333,
-      expenseSplitPercentage: 33.333333,
-      profitSplitPercentage: 33.333333,
-      isPrimarySettlementPartner: false,
-      notes: 'Supply Chain & Co-founder',
-    },
-    update: {},
-    include: { financialAccount: true },
-  });
-
-  // Ensure each partner has a PartnerFinancialAccount initialized
-  for (const p of [daksh, partnerB, partnerC]) {
-    await txClient.partnerFinancialAccount.upsert({
-      where: { partnerId: p.id },
-      create: { partnerId: p.id },
-      update: {},
-    });
-  }
-
-  return { daksh, partnerB, partnerC };
+  return partner;
 }
 
+/**
+ * Validates that total active partner split percentages equal exactly 100%.
+ */
+export async function validateActivePartnerSplits(txClient: Prisma.TransactionClient = prisma as any) {
+  const partners = await txClient.businessPartner.findMany({
+    where: { isActive: true },
+  });
+
+  if (partners.length === 0) return { valid: true, count: 0 };
+
+  const totalExpenseSplit = partners.reduce((acc, p) => acc + p.expenseSplitPercentage, 0);
+  const totalProfitSplit = partners.reduce((acc, p) => acc + p.profitSplitPercentage, 0);
+  const totalOwnership = partners.reduce((acc, p) => acc + p.ownershipPercentage, 0);
+
+  const isExact100 = (val: number) => Math.abs(val - 100) < 0.01;
+
+  return {
+    valid: isExact100(totalExpenseSplit) && isExact100(totalProfitSplit) && isExact100(totalOwnership),
+    count: partners.length,
+    totalExpenseSplit,
+    totalProfitSplit,
+    totalOwnership,
+    partners,
+  };
+}
+
+/**
+ * Retrieves all business partners without auto-generating dummy records.
+ */
+export async function getActiveBusinessPartners(txClient: Prisma.TransactionClient = prisma as any) {
+  return await txClient.businessPartner.findMany({
+    where: { isActive: true },
+    include: { financialAccount: true },
+    orderBy: { createdAt: 'asc' },
+  });
+}

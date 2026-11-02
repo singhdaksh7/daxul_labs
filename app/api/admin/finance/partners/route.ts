@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { getOrCreateDefaultPartners } from '@/lib/finance/partners';
+import { configureBusinessPartner, validateActivePartnerSplits } from '@/lib/finance/partners';
+import { z } from 'zod';
 
 export async function GET(req: NextRequest) {
   const check = await requireAdminSession();
@@ -9,27 +10,24 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Ensure default 3 partners exist
-  await getOrCreateDefaultPartners();
-
-  const [partners, accounts, recentLedger] = await Promise.all([
+  const [partners, availableUsers, splitValidation] = await Promise.all([
     prisma.businessPartner.findMany({
       include: {
         financialAccount: true,
+        user: { select: { id: true, name: true, email: true, role: true } },
       },
       orderBy: { createdAt: 'asc' },
     }),
-    prisma.partnerFinancialAccount.findMany({
-      include: { partner: true },
+    prisma.user.findMany({
+      where: {
+        role: { in: ['ADMIN', 'SUPER_ADMIN'] },
+      },
+      select: { id: true, name: true, email: true, role: true },
     }),
-    prisma.partnerLedgerEntry.findMany({
-      include: { partner: true },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    }),
+    validateActivePartnerSplits(),
   ]);
 
-  // Serialise BigInt values to string/number safely for JSON
+  // Serialise BigInt values to string safely for JSON
   const safePartners = partners.map((p) => ({
     ...p,
     financialAccount: p.financialAccount
@@ -46,15 +44,86 @@ export async function GET(req: NextRequest) {
       : null,
   }));
 
-  const safeLedger = recentLedger.map((l) => ({
-    ...l,
-    amountPaise: l.amountPaise.toString(),
-    balanceAfterPaise: l.balanceAfterPaise.toString(),
-  }));
-
   return NextResponse.json({
     partners: safePartners,
-    recentLedger: safeLedger,
+    availableUsers,
+    splitValidation,
   });
 }
+
+const configurePartnerSchema = z.object({
+  userId: z.string().min(1),
+  displayName: z.string().min(2),
+  phone: z.string().optional().nullable(),
+  ownershipPercentage: z.number().min(0).max(100),
+  expenseSplitPercentage: z.number().min(0).max(100),
+  profitSplitPercentage: z.number().min(0).max(100),
+  isPrimarySettlementPartner: z.boolean().optional(),
+  notes: z.string().optional().nullable(),
+});
+
+export async function POST(req: NextRequest) {
+  const check = await requireAdminSession();
+  if (!check.authorized) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Only SUPER_ADMIN can configure or change partner ownership / splits
+  if (check.role !== 'SUPER_ADMIN') {
+    return NextResponse.json({ error: 'Forbidden: SUPER_ADMIN required to manage business partners' }, { status: 403 });
+  }
+
+  const json = await req.json();
+  const parsed = configurePartnerSchema.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: parsed.data.userId },
+    });
+    if (!user) {
+      return NextResponse.json({ error: 'Selected user does not exist in the database' }, { status: 404 });
+    }
+
+    const partner = await configureBusinessPartner({
+      userId: user.id,
+      displayName: parsed.data.displayName,
+      email: user.email,
+      phone: parsed.data.phone,
+      ownershipPercentage: parsed.data.ownershipPercentage,
+      expenseSplitPercentage: parsed.data.expenseSplitPercentage,
+      profitSplitPercentage: parsed.data.profitSplitPercentage,
+      isPrimarySettlementPartner: parsed.data.isPrimarySettlementPartner,
+      notes: parsed.data.notes,
+    });
+
+    const adminUserId = (check.session?.user as any)?.id || 'admin';
+    const adminUserEmail = check.session?.user?.email || 'admin@daxullabs.com';
+
+    // Record audit log for partner split configuration
+    await prisma.auditLog.create({
+      data: {
+        adminUserId,
+        adminUserEmail,
+        action: 'PARTNER_CONFIGURED',
+        entityType: 'BusinessPartner',
+        entityId: partner.id,
+        details: {
+          displayName: partner.displayName,
+          ownershipPercentage: partner.ownershipPercentage,
+          expenseSplitPercentage: partner.expenseSplitPercentage,
+          profitSplitPercentage: partner.profitSplitPercentage,
+          isPrimarySettlementPartner: partner.isPrimarySettlementPartner,
+        },
+      },
+    });
+
+    return NextResponse.json({ success: true, partner });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'Failed to configure partner' }, { status: 400 });
+  }
+}
+
 

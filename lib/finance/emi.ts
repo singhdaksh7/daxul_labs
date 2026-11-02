@@ -2,7 +2,6 @@ import { prisma } from '@/lib/db';
 import { Prisma } from '@prisma/client';
 import { rupeesToPaise, splitPaiseDeterministically } from './money';
 import { recordPartnerLedgerEntry } from './ledger';
-import { getOrCreateDefaultPartners } from './partners';
 
 export interface CreateEmiExpenseParams {
   title: string;
@@ -34,14 +33,7 @@ export async function createEmiExpenseSchedule(
     const downPaymentPaise = rupeesToPaise(params.downPaymentRupees || 0);
     const financedAmountPaise = purchasePricePaise - downPaymentPaise;
 
-    // Fetch partners
-    const partners = await tx.businessPartner.findMany({
-      where: { isActive: true },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (partners.length === 0) {
-      await getOrCreateDefaultPartners(tx);
-    }
+    // Fetch active partners
     const activePartners = await tx.businessPartner.findMany({
       where: { isActive: true },
       orderBy: { createdAt: 'asc' },

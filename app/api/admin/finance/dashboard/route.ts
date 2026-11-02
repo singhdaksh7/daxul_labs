@@ -2,15 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { paiseToRupees } from '@/lib/finance/money';
-import { getOrCreateDefaultPartners } from '@/lib/finance/partners';
 
 export async function GET(req: NextRequest) {
   const check = await requireAdminSession();
   if (!check.authorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  await getOrCreateDefaultPartners();
 
   const [partners, expenses, settlements, emiInstallments, capitalEntries, orders] = await Promise.all([
     prisma.businessPartner.findMany({

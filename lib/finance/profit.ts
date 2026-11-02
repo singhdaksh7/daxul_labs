@@ -2,7 +2,6 @@ import { prisma } from '@/lib/db';
 import { Prisma } from '@prisma/client';
 import { rupeesToPaise, splitPaiseDeterministically } from './money';
 import { recordPartnerLedgerEntry } from './ledger';
-import { getOrCreateDefaultPartners } from './partners';
 
 export interface CreateProfitPeriodParams {
   periodName: string; // e.g. "November 2026"
@@ -93,13 +92,6 @@ export async function lockAndDistributeProfitPeriod(params: {
     }
 
     // Fetch active partners
-    const partners = await tx.businessPartner.findMany({
-      where: { isActive: true },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (partners.length === 0) {
-      await getOrCreateDefaultPartners(tx);
-    }
     const activePartners = await tx.businessPartner.findMany({
       where: { isActive: true },
       orderBy: { createdAt: 'asc' },
