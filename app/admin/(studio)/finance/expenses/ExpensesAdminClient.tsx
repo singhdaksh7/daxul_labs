@@ -13,7 +13,7 @@ export default function ExpensesAdminClient() {
   // Form State
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("RAW_MATERIAL_SPOOL");
+  const [category, setCategory] = useState("FILAMENT");
   const [classification, setClassification] = useState("OPERATING_EXPENSE");
   const [paymentSource, setPaymentSource] = useState("PARTNER_PAID");
   const [paidByPartnerId, setPaidByPartnerId] = useState("");
@@ -65,10 +65,9 @@ export default function ExpensesAdminClient() {
           description,
           category,
           classification,
-          paymentSource,
+          isBusinessAccountPaid: paymentSource === "BUSINESS_ACCOUNT",
           paidByPartnerId: paymentSource === "PARTNER_PAID" ? paidByPartnerId : undefined,
           totalAmountRupees: parseFloat(totalAmountRupees),
-          splitType,
         }),
       });
 
@@ -141,7 +140,7 @@ export default function ExpensesAdminClient() {
                         </span>
                       </td>
                       <td className="py-3">
-                        {exp.paymentSource === "PARTNER_PAID" ? (
+                        {!exp.isBusinessAccountPaid && exp.paidByPartner ? (
                           <span className="text-[#C8FF35]">Partner: {exp.paidByPartner?.displayName}</span>
                         ) : (
                           <span className="text-gray-400">Company Account</span>
@@ -239,11 +238,14 @@ export default function ExpensesAdminClient() {
                   onChange={(e) => setCategory(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-2 py-1.5 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
                 >
-                  <option value="RAW_MATERIAL_SPOOL">Filament / Raw Material</option>
+                  <option value="FILAMENT">Filament</option>
+                  <option value="RAW_MATERIAL">Raw Material</option>
                   <option value="THREE_D_PRINTER">3D Printer</option>
                   <option value="PACKAGING">Packaging</option>
-                  <option value="EQUIPMENT_REPAIR">Equipment & Tooling</option>
-                  <option value="OFFICE_OVERHEAD">Overhead</option>
+                  <option value="EQUIPMENT">Equipment & Tooling</option>
+                  <option value="MAINTENANCE">Maintenance & Repair</option>
+                  <option value="OFFICE">Office & Overhead</option>
+                  <option value="OTHER">Other</option>
                 </select>
               </div>
             </div>

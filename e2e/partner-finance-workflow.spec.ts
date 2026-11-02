@@ -139,7 +139,7 @@ test.describe.serial('Partner Finance System Real Browser Workflow E2E', () => {
     await page.fill('#expense-amount-input', '30000');
     await page.selectOption('#expense-classification-select', 'OPERATING_EXPENSE');
     await page.selectOption('#payment-source-select', 'PARTNER_PAID');
-    await page.waitForSelector('#paid-by-partner-select option');
+    await page.waitForSelector('#paid-by-partner-select option', { state: 'attached' });
     await page.selectOption('#paid-by-partner-select', dakshPartnerId);
     await page.selectOption('#split-type-select', 'EQUAL');
     await page.click('#submit-expense-btn');
@@ -213,7 +213,7 @@ test.describe.serial('Partner Finance System Real Browser Workflow E2E', () => {
     await page.fill('#emi-downpayment-input', '30000');
     await page.fill('#emi-tenure-input', '6');
     await page.fill('#emi-monthly-input', '10000');
-    await page.waitForSelector('#emi-partner-select option');
+    await page.waitForSelector('#emi-partner-select option', { state: 'attached' });
     await page.selectOption('#emi-partner-select', dakshPartnerId);
     await page.click('#submit-emi-btn');
 
@@ -373,7 +373,7 @@ test.describe.serial('Partner Finance System Real Browser Workflow E2E', () => {
     await page.goto('/admin/finance/capital');
 
     // Daksh ₹100k
-    await page.waitForSelector('#capital-partner-select option');
+    await page.waitForSelector('#capital-partner-select option', { state: 'attached' });
     await page.selectOption('#capital-partner-select', dakshPartnerId);
     await page.selectOption('#capital-type-select', 'CAPITAL_CONTRIBUTION');
     await page.fill('#capital-amount-input', '100000');
@@ -382,7 +382,7 @@ test.describe.serial('Partner Finance System Real Browser Workflow E2E', () => {
     await expect(page.locator('#capital-success')).toBeVisible();
 
     // Partner B ₹100k
-    await page.waitForSelector('#capital-partner-select option');
+    await page.waitForSelector('#capital-partner-select option', { state: 'attached' });
     await page.selectOption('#capital-partner-select', partnerBPartnerId);
     await page.selectOption('#capital-type-select', 'CAPITAL_CONTRIBUTION');
     await page.fill('#capital-amount-input', '100000');
@@ -391,7 +391,7 @@ test.describe.serial('Partner Finance System Real Browser Workflow E2E', () => {
     await expect(page.locator('#capital-success')).toBeVisible();
 
     // Partner C ₹100k
-    await page.waitForSelector('#capital-partner-select option');
+    await page.waitForSelector('#capital-partner-select option', { state: 'attached' });
     await page.selectOption('#capital-partner-select', partnerCPartnerId);
     await page.selectOption('#capital-type-select', 'CAPITAL_CONTRIBUTION');
     await page.fill('#capital-amount-input', '100000');

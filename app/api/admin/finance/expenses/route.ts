@@ -33,17 +33,8 @@ export async function GET(req: NextRequest) {
     take: 50,
   });
 
-  const safeExpenses = expenses.map((e) => ({
-    ...e,
-    totalAmountPaise: e.totalAmountPaise.toString(),
-    taxAmountPaise: e.taxAmountPaise.toString(),
-    shares: e.shares.map((s) => ({
-      ...s,
-      shareAmountPaise: s.shareAmountPaise.toString(),
-      paidAmountPaise: s.paidAmountPaise.toString(),
-      remainingPaise: s.remainingPaise.toString(),
-    })),
-  }));
+  // emiSchedule/attachments carry BigInt columns too, so convert the whole tree.
+  const safeExpenses = JSON.parse(JSON.stringify(expenses, (_k, v) => (typeof v === 'bigint' ? v.toString() : v)));
 
   return NextResponse.json({ expenses: safeExpenses });
 }
