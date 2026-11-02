@@ -80,11 +80,22 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: parsed.data.userId },
-    });
+    // Accept either the user id or the login email (case-insensitive).
+    const ref = parsed.data.userId.trim();
+    const user = ref.includes('@')
+      ? await prisma.user.findUnique({ where: { email: ref.toLowerCase() } })
+      : await prisma.user.findUnique({ where: { id: ref } });
     if (!user) {
-      return NextResponse.json({ error: 'Selected user does not exist in the database' }, { status: 404 });
+      return NextResponse.json(
+        { error: 'No account found for that email/ID. Add them first under Staff & Permissions, then configure them here.' },
+        { status: 404 },
+      );
+    }
+    if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'That account is not an admin yet. Add them under Staff & Permissions (ADMIN or SUPER_ADMIN) first.' },
+        { status: 400 },
+      );
     }
 
     const partner = await configureBusinessPartner({

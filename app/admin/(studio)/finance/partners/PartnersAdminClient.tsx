@@ -18,6 +18,8 @@ export default function PartnersAdminClient() {
   const [profitSplitPercentage, setProfitSplitPercentage] = useState("33.333333");
   const [isPrimarySettlementPartner, setIsPrimarySettlementPartner] = useState(false);
 
+  const [availableUsers, setAvailableUsers] = useState<{ id: string; name: string | null; email: string }[]>([]);
+
   const fetchPartners = async () => {
     setLoading(true);
     try {
@@ -25,6 +27,7 @@ export default function PartnersAdminClient() {
       if (res.ok) {
         const json = await res.json();
         setPartners(json.partners || []);
+        setAvailableUsers(json.availableUsers || []);
       }
     } catch (err: any) {
       setError(err.message);
@@ -165,11 +168,19 @@ export default function PartnersAdminClient() {
                 type="text"
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
-                placeholder="User ID or Email"
+                placeholder="Pick or type the partner's login email"
+                list="partner-user-options"
+                autoComplete="off"
                 required
                 className="mt-1 w-full rounded-lg border border-[#242426] bg-[#0B0B0C] px-3 py-2 text-xs text-[#F3F0E9] focus:border-[#C8FF35] focus:outline-none"
               />
             </div>
+
+            <datalist id="partner-user-options">
+              {availableUsers.map((u) => (
+                <option key={u.id} value={u.email}>{u.name || u.email}</option>
+              ))}
+            </datalist>
 
             <div>
               <label className="block text-[11px] font-medium text-[#B9B9B4]">Display Name</label>
