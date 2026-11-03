@@ -39,6 +39,8 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 
+RUN mkdir -p /app/.private_ar_cache && chown -R nextjs:nodejs /app/.private_ar_cache
+
 USER nextjs
 
 EXPOSE 3000
