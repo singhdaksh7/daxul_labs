@@ -2148,6 +2148,12 @@ model LithophaneVariety {
   defaultSizeId String?
   optionGroups Json    @default("[]") // [{ key, label, type: select|toggle, geometry, choices:[{value,label,priceAdjustment}], default }]
   productionDays Int   @default(7)
+  arEnabled      Boolean  @default(true)
+  arPlacementType String  @default("floor")
+  arModelSource  String   @default("auto")
+  arScaleMode    String   @default("fixed")
+  arBaseOffset   Float    @default(0)
+  supportsArLighting Boolean @default(true)
   sizes       LithophaneSize[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -2181,12 +2187,29 @@ model LithophaneGeneration {
   uploadFilename String
   config      Json
   resolution  Int
+  arGlbMediaId String?
+  arUsdzMediaId String?
   ownerToken  String?
   userId      String?
   createdAt   DateTime @default(now())
 
   @@unique([hash, kind])
   @@index([uploadFilename])
+}
+
+/// Ephemeral AR session for handoff (desktop -> phone QR code) and temporary asset access.
+model LithophaneArSession {
+  id           String   @id @default(cuid())
+  generationId String
+  tokenHash    String   @unique
+  deviceInfo   String?
+  modelPath    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([tokenHash])
+  @@index([generationId])
+  @@index([expiresAt])
 }
 
 

@@ -32,6 +32,12 @@ export const varietyFields = {
   sortOrder: z.number().int().min(0).max(1000).optional(),
   productionDays: z.number().int().min(1).max(90).optional(),
   optionGroups: optionGroupsSchema.optional(),
+  arEnabled: z.boolean().optional(),
+  arPlacementType: z.string().trim().max(40).optional(),
+  arModelSource: z.string().trim().max(60).optional(),
+  arScaleMode: z.string().trim().max(40).optional(),
+  arBaseOffset: z.number().min(-500).max(500).optional(),
+  supportsArLighting: z.boolean().optional(),
 };
 
 export const varietyCreateSchema = z.object({

@@ -6,7 +6,7 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 export default defineConfig({
   testDir: __dirname,
-  testMatch: /lithophane-builder\.spec\.ts$/,
+  testMatch: /lithophane-(builder|ar)\.spec\.ts$/,
   outputDir: path.join(__dirname, 'test-results'),
   workers: 1,
   fullyParallel: false,

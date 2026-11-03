@@ -264,6 +264,12 @@ export async function getPublicConfig() {
         startingPrice: round2(v.basePrice + minAdj),
         supportsLight: v.supportsLight,
         productionDays: v.productionDays,
+        arEnabled: (v as any).arEnabled ?? true,
+        arPlacementType: (v as any).arPlacementType ?? 'floor',
+        arModelSource: (v as any).arModelSource ?? 'auto',
+        arScaleMode: (v as any).arScaleMode ?? 'fixed',
+        arBaseOffset: (v as any).arBaseOffset ?? 0,
+        supportsArLighting: (v as any).supportsArLighting ?? true,
         optionGroups: groups,
         defaultSizeId: defSize.id,
         sizes: v.sizes.map((s) => ({

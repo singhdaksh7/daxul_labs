@@ -17,6 +17,7 @@ import {
 import { computeCropRect, generateHeightMap, gridSize } from "@/lib/lithophaneRelief";
 import type { ReliefData } from "./LithophanePreview3D";
 import VarietyIcon from "./VarietyIcon";
+import LithophaneArModal from "./LithophaneArModal";
 
 const Preview3D = dynamic(() => import("./LithophanePreview3D"), {
   ssr: false,
@@ -192,6 +193,8 @@ export default function LithophaneBuilder() {
   const [resetKey, setResetKey] = useState(0);
   const [added, setAdded] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [arModalOpen, setArModalOpen] = useState(false);
+  const arGlbCache = useRef(new Map<string, ArrayBuffer>());
 
   const reliefCache = useRef(new Map<string, ReliefData>());
   const seq = useRef(0);
@@ -390,6 +393,34 @@ export default function LithophaneBuilder() {
   const stale = !!photo && (!preview || preview.key !== currentKey);
   const updating = stale && !!preview;
   const canAdd = !!photo && !!preview && !stale && !running && phase === "ready" && !!price && !!cfg?.settings.productId;
+  const showArButton = !!photo && !!preview && (variety as any)?.arEnabled !== false;
+  const isArDisabled = updating || running || stale || phase !== "ready";
+  const canAr = showArButton && !isArDisabled;
+
+  const prepareArGlb = useCallback(async () => {
+    if (!preview || !sel || !variety) throw new Error("Preview not ready");
+    const cacheKey = `${preview.hash}_${lightOn ? "on" : "off"}`;
+    const cached = arGlbCache.current.get(cacheKey);
+    if (cached) return cached;
+
+    const { buildArScene, exportArGlb } = await import("@/lib/lithophaneArModel");
+    const sObj = variety.sizes.find((x) => x.id === sel.sizeId);
+    const scene = buildArScene({
+      map: preview.relief.map,
+      widthMm: preview.gen.config.widthMm,
+      heightMm: preview.gen.config.heightMm,
+      thicknessMm: preview.gen.config.thicknessMm,
+      depthMm: sObj?.depthMm ?? null,
+      baseModel: variety.baseModel,
+      options: sel.options,
+      lightOn: lightOn && variety.supportsLight,
+      baseOffsetMm: (variety as any).arBaseOffset ?? 0,
+    });
+
+    const buffer = await exportArGlb(scene.root);
+    arGlbCache.current.set(cacheKey, buffer);
+    return buffer;
+  }, [preview, sel, variety, lightOn]);
 
   const cropRect = useMemo(() => {
     if (!photo || !preview) return null;
@@ -605,6 +636,30 @@ export default function LithophaneBuilder() {
                 <RotateCcw className="h-4 w-4" /> Reset
               </button>
             </div>
+            {showArButton && (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  data-testid="view-on-table"
+                  disabled={isArDisabled}
+                  onClick={() => setArModalOpen(true)}
+                  className="flex w-full min-h-12 items-center justify-between gap-3 rounded-xl border border-daxul-black bg-daxul-black px-4 py-3 text-left text-daxul-bone shadow-md hover:bg-black transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-daxul-lime text-daxul-black">
+                      <Box className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-wider text-daxul-lime">VIEW ON YOUR TABLE</div>
+                      <div className="text-[11px] text-white/70">See it at real size in your space.</div>
+                    </div>
+                  </div>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-daxul-lime border border-daxul-lime/40 rounded px-2 py-1">
+                    AR
+                  </span>
+                </button>
+              </div>
+            )}
             <p className="text-[11px] leading-relaxed text-[#71717A]">Drag to rotate, scroll or pinch to zoom. {s.previewDisclaimer}</p>
           </section>
 
@@ -883,6 +938,24 @@ export default function LithophaneBuilder() {
         <p className="text-center text-xs text-[#71717A]">
           Choose a photo and we will build your lithophane preview automatically. You will then pick a product type and size.
         </p>
+      )}
+      {canAr && (
+        <LithophaneArModal
+          isOpen={arModalOpen}
+          onClose={() => setArModalOpen(false)}
+          varietyName={variety.name}
+          varietyKey={variety.key}
+          widthMm={preview.gen.config.widthMm}
+          heightMm={preview.gen.config.heightMm}
+          depthMm={sizeObj?.depthMm ?? null}
+          priceText={price ? inr(price.lineTotal) : undefined}
+          lightOn={lightOn}
+          onToggleLight={() => setLightOn(!lightOn)}
+          supportsLight={variety.supportsLight}
+          generationId={preview.generationId}
+          hash={preview.hash}
+          onPrepareGlb={prepareArGlb}
+        />
       )}
     </div>
   );

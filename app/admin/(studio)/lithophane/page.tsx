@@ -32,6 +32,12 @@ type Variety = {
   optionGroups: unknown;
   defaultSizeId: string | null;
   sizes: Size[];
+  arEnabled?: boolean;
+  arPlacementType?: string;
+  arModelSource?: string;
+  arScaleMode?: string;
+  arBaseOffset?: number;
+  supportsArLighting?: boolean;
 };
 type Settings = Record<string, any>;
 
@@ -172,6 +178,12 @@ function VarietyEditor({ v, busy, run }: { v: Variety; busy: boolean; run: (l: s
     sortOrder: v.sortOrder,
     productionDays: v.productionDays,
     defaultSizeId: v.defaultSizeId ?? "",
+    arEnabled: v.arEnabled ?? true,
+    arPlacementType: v.arPlacementType ?? "floor",
+    arModelSource: v.arModelSource ?? "auto",
+    arScaleMode: v.arScaleMode ?? "fixed",
+    arBaseOffset: v.arBaseOffset ?? 0,
+    supportsArLighting: v.supportsArLighting ?? true,
   });
   const [groups, setGroups] = useState(JSON.stringify(v.optionGroups ?? [], null, 2));
   const [parseErr, setParseErr] = useState<string | null>(null);
@@ -198,6 +210,12 @@ function VarietyEditor({ v, busy, run }: { v: Variety; busy: boolean; run: (l: s
         productionDays: Number(f.productionDays),
         defaultSizeId: f.defaultSizeId || undefined,
         optionGroups: og,
+        arEnabled: f.arEnabled,
+        arPlacementType: f.arPlacementType,
+        arModelSource: f.arModelSource,
+        arScaleMode: f.arScaleMode,
+        arBaseOffset: Number(f.arBaseOffset),
+        supportsArLighting: f.supportsArLighting,
       }),
     );
   };
@@ -221,6 +239,34 @@ function VarietyEditor({ v, busy, run }: { v: Variety; busy: boolean; run: (l: s
       <div className="mt-3 flex flex-wrap gap-5">
         <Toggle label="Active" checked={f.isActive} onChange={(x) => setF({ ...f, isActive: x })} />
         <Toggle label="Supports light preview" checked={f.supportsLight} onChange={(x) => setF({ ...f, supportsLight: x })} />
+      </div>
+
+      <div className="mt-4 rounded-xl border border-[#242426] bg-[#0E0E10] p-4">
+        <h4 className="mb-3 font-mono text-[11px] uppercase tracking-widest text-daxul-lime">AR & Tabletop Experience Controls</h4>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="AR Placement Type" hint="Horizontal table surface">
+            <select className={inputCls} value={f.arPlacementType} onChange={(e) => setF({ ...f, arPlacementType: e.target.value })}>
+              <option value="floor">Floor / Tabletop (Horizontal)</option>
+              <option value="table">Table</option>
+            </select>
+          </Field>
+          <Field label="AR Scale Mode" hint="fixed = 1:1 manufacturing size">
+            <select className={inputCls} value={f.arScaleMode} onChange={(e) => setF({ ...f, arScaleMode: e.target.value })}>
+              <option value="fixed">Fixed (1:1 Physical Scale)</option>
+              <option value="auto">Auto Scale</option>
+            </select>
+          </Field>
+          <Field label="AR Model Source / Mode">
+            <input className={inputCls} value={f.arModelSource} onChange={(e) => setF({ ...f, arModelSource: e.target.value })} />
+          </Field>
+          <Field label="AR Base Offset (mm)" hint="Vertical offset so bottom sits on table">
+            <input type="number" step="0.5" className={inputCls} value={f.arBaseOffset} onChange={(e) => setF({ ...f, arBaseOffset: num(e.target.value) })} />
+          </Field>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-5">
+          <Toggle label="AR Enabled (Show 'View on your table')" checked={f.arEnabled} onChange={(x) => setF({ ...f, arEnabled: x })} data-testid={`variety-ar-enabled-${v.key}`} />
+          <Toggle label="Supports AR Lighting Preview" checked={f.supportsArLighting} onChange={(x) => setF({ ...f, supportsArLighting: x })} />
+        </div>
       </div>
       <div className="mt-4">
         <Field label="Option groups (JSON)" hint='[{ key, label, type: "select"|"toggle", geometry: true|false, choices: [{ value, label, priceAdjustment }], default }]. geometry=true regenerates the preview when changed.'>

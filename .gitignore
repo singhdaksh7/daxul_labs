@@ -16,6 +16,8 @@ node_modules/
 dist/
 coverage/
 /uploads/
+public/uploads/
 *.tsbuildinfo
 .claude/
 .next-*/
+.private_ar_cache/
